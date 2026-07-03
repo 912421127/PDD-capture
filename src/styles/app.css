@@ -50,6 +50,26 @@ body {
   width: 100%;
 }
 
+/* 动态参数状态条：只告诉用户有没有自动获取到，不暴露长字符串 */
+.token-box {
+  align-items: center;
+  background: #ffffff;
+  border: 1px solid #d9e1ec;
+  border-radius: 6px;
+  box-sizing: border-box;
+  color: #394150;
+  display: flex;
+  justify-content: space-between;
+  min-height: 34px;
+  padding: 6px 10px;
+  width: 100%;
+}
+
+.token-box strong {
+  color: #1677ff;
+  font-weight: 600;
+}
+
 /* 数据概览和上方按钮留一点间距 */
 .summary-box {
   margin-top: 16px;

@@ -15,15 +15,15 @@
             <label class="field-label">每页数量</label>
             <a-input-number v-model:value="pageSize" class="full-input" :min="1" :max="100" />
 
-            <label class="field-label">anti-content / crawlerInfo</label>
-            <a-textarea v-model:value="crawlerInfo" :rows="3" placeholder="从 Network 请求头里复制 anti-content" />
-
-            <label class="field-label">webspiderrule</label>
-            <a-textarea v-model:value="webSpiderRule" :rows="2" placeholder="从 Network 请求头里复制 webspiderrule" />
+            <div class="token-box">
+                <span>动态参数</span>
+                <strong>{{ tokenStatusText }}</strong>
+            </div>
         </a-space>
 
         <a-space direction="vertical" class="action-stack">
             <a-button block @click="detectPage" :loading="task.status === 'checking'">检测页面</a-button>
+            <a-button block @click="autoReadToken" :loading="readingToken">自动获取参数</a-button>
             <a-button type="primary" block @click="startCapture" :loading="task.status === 'running'">开始采集</a-button>
             <a-space-compact block>
                 <a-button block :disabled="!canExport" @click="exportData('json')">导出 JSON</a-button>
@@ -47,7 +47,8 @@ import { computed, reactive, ref } from 'vue';
 import { browser } from 'wxt/browser';
 import { fetchAllGoodsEffect } from '../../services/goodsEffectApi';
 import { isGoodsEffectPage, normalizeGoodsEffectRecord, toCsv } from '../../services/goodsEffectCapture';
-import type { GoodsEffectApiParams, GoodsEffectCaptureTask } from '../../types/goodsEffect';
+import { readGoodsEffectTokenFromPage } from '../../services/goodsEffectToken';
+import type { GoodsEffectApiParams, GoodsEffectCaptureTask, GoodsEffectToken } from '../../types/goodsEffect';
 
 // 默认日期先取今天，后面你想加日期选择器时，只需要替换这里的输入控件。
 const today = new Date().toISOString().slice(0, 10);
@@ -57,7 +58,10 @@ const startDate = ref(today);
 const endDate = ref(today);
 const pageSize = ref(50);
 const crawlerInfo = ref('');
+const antiContent = ref('');
 const webSpiderRule = ref('');
+const tokenCapturedAt = ref(0);
+const readingToken = ref(false);
 
 // task 保存当前采集任务状态，popup 的展示都从这里读取。
 const task = reactive<GoodsEffectCaptureTask>({
@@ -77,6 +81,15 @@ const messageType = ref<'success' | 'info' | 'warning' | 'error'>('info');
 
 // 有数据以后，才允许导出。
 const canExport = computed(() => task.records.length > 0);
+
+// 三个动态参数都有值，才认为参数已经准备好。
+const hasToken = computed(() => Boolean(crawlerInfo.value && antiContent.value && webSpiderRule.value));
+
+// 参数状态文案，显示在 popup 里。
+const tokenStatusText = computed(() => {
+    if (!hasToken.value) return '未获取';
+    return tokenCapturedAt.value ? `已获取 ${new Date(tokenCapturedAt.value).toLocaleTimeString()}` : '已获取';
+});
 
 // popup 顶部展示的一句话状态。
 const statusText = computed(() => {
@@ -121,6 +134,22 @@ async function detectPage() {
     }
 }
 
+// 点击“自动获取参数”：读取 PDD 页面最近一次商品接口请求里的风控参数。
+async function autoReadToken() {
+    readingToken.value = true;
+    clearMessage();
+
+    try {
+        const token = await readGoodsEffectTokenFromPage();
+        applyToken(token);
+        showMessage('success', '参数获取成功，可以开始采集');
+    } catch (error) {
+        showMessage('warning', error instanceof Error ? error.message : String(error));
+    } finally {
+        readingToken.value = false;
+    }
+}
+
 // 点击“开始采集”：把固定接口请求函数注入到当前 PDD 页面里执行。
 async function startCapture() {
     task.status = 'running';
@@ -138,6 +167,12 @@ async function startCapture() {
 
         if (!task.isGoodsEffectPage) {
             throw new Error('当前标签页不是 PDD 商品效果页，请打开商品效果页后重试');
+        }
+
+        // 如果还没拿到动态参数，采集前先自动读取一次。
+        if (!hasToken.value) {
+            const token = await readGoodsEffectTokenFromPage();
+            applyToken(token);
         }
 
         const result = await fetchAllGoodsEffect(buildParams());
@@ -177,8 +212,17 @@ function buildParams(): GoodsEffectApiParams {
         queryType: 6,
         pageSize: pageSize.value || 50,
         crawlerInfo: crawlerInfo.value.trim(),
+        antiContent: antiContent.value.trim(),
         webSpiderRule: webSpiderRule.value.trim()
     };
+}
+
+// 把页面里读到的动态参数保存到 popup 表单状态里。
+function applyToken(token: GoodsEffectToken) {
+    crawlerInfo.value = token.crawlerInfo;
+    antiContent.value = token.antiContent;
+    webSpiderRule.value = token.webSpiderRule;
+    tokenCapturedAt.value = token.capturedAt;
 }
 
 // 读取当前 Chrome 标签页地址。

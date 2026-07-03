@@ -43,8 +43,8 @@ async function fetchGoodsEffectInsidePddPage(apiUrl: string, params: GoodsEffect
             'content-type': 'application/json'
         };
 
-        // anti-content 和 crawlerInfo 第一版使用同一个值，由用户从 Network 里复制。
-        if (params.crawlerInfo) headers['anti-content'] = params.crawlerInfo;
+        // anti-content 优先使用页面真实请求头；如果没有，就退回 crawlerInfo。
+        if (params.antiContent || params.crawlerInfo) headers['anti-content'] = params.antiContent || params.crawlerInfo;
 
         // webspiderrule 是另一个动态风控字段，第一版先由用户手动填写。
         if (params.webSpiderRule) headers.webspiderrule = params.webSpiderRule;

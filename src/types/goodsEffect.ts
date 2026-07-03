@@ -8,7 +8,16 @@ export type GoodsEffectApiParams = {
     queryType: number;
     pageSize: number;
     crawlerInfo: string;
+    antiContent: string;
     webSpiderRule: string;
+};
+
+// PDD 商品效果接口需要的动态风控参数。
+export type GoodsEffectToken = {
+    crawlerInfo: string;
+    antiContent: string;
+    webSpiderRule: string;
+    capturedAt: number;
 };
 
 // 从 PDD 接口拿到的一页或全部分页结果。
@@ -19,24 +28,9 @@ export type GoodsEffectPageResult = {
     pageSize: number;
 };
 
-// 一条商品效果数据。raw 保留原始接口数据，方便后续补字段。
-export type GoodsEffectRecord = {
-    goodsId?: string;
-    goodsName?: string;
-    statDate?: string;
-    goodsUv?: number | string;
-    goodsPv?: number | string;
-    goodsFavCnt?: number | string;
-    payOrdrCnt?: number | string;
-    payOrdrAmt?: number | string;
-    goodsVcr?: number | string;
-    ordrCrtUsrCnt?: number | string;
-    ordrVstrRto?: number | string;
-    payOrdrRto?: number | string;
-    goodsStatus?: number | string;
-    hdThumbUrl?: string;
-    raw: unknown;
-};
+// 一条商品效果数据。
+// PDD 接口字段很多，而且后面可能变，所以这里允许保存任意字段。
+export type GoodsEffectRecord = Record<string, unknown>;
 
 // popup 页面展示用的任务状态。
 export type GoodsEffectCaptureTask = {
