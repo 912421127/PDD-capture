@@ -1,0 +1,23 @@
+body {
+  margin: 0;
+  min-width: 320px;
+  background: #f5f7fb;
+}
+
+#app {
+  min-height: 100vh;
+}
+
+.popup-page {
+  box-sizing: border-box;
+  width: 340px;
+  padding: 20px;
+}
+
+.status-text {
+  color: #606a78;
+}
+
+.tip-box {
+  margin-top: 16px;
+}
