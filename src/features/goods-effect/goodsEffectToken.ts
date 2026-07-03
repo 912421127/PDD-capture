@@ -1,5 +1,5 @@
 import { browser } from 'wxt/browser';
-import type { GoodsEffectToken } from '../types/goodsEffect';
+import type { GoodsEffectToken } from './goodsEffectTypes';
 
 type TokenInput = {
     antiContent?: string;

@@ -1,5 +1,5 @@
 import { browser } from 'wxt/browser';
-import type { GoodsEffectFontInfo } from '../types/goodsEffect';
+import type { GoodsEffectFontInfo } from './goodsEffectTypes';
 
 type RawFontInfo = {
     fontFaces: Array<{

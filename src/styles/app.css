@@ -41,6 +41,8 @@ body {
 
 /* 字段标题保持朴素，方便小白直接看懂每个输入框的含义 */
 .field-label {
+  display: block;
+  margin-bottom: 6px;
   color: #394150;
   font-size: 13px;
 }
@@ -48,6 +50,16 @@ body {
 /* Ant Design 的数字输入框默认不会撑满，这里手动设置一下 */
 .full-input {
   width: 100%;
+}
+
+/* 功能选择区独立放在顶部，避免后续功能增加后入口变乱 */
+.feature-picker {
+  margin-bottom: 16px;
+}
+
+.feature-description {
+  margin: 8px 0 0;
+  font-size: 13px;
 }
 
 /* 动态参数状态条：只告诉用户有没有自动获取到，不暴露长字符串 */

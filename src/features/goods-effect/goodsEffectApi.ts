@@ -1,5 +1,5 @@
-import type { GoodsEffectApiParams, GoodsEffectPageResult } from '../types/goodsEffect';
 import { browser } from 'wxt/browser';
+import type { GoodsEffectApiParams, GoodsEffectPageResult } from './goodsEffectTypes';
 
 // 商品效果页已经确认的固定接口。
 const GOODS_EFFECT_API = 'https://mms.pinduoduo.com/sydney/api/goodsDataShow/queryGoodsDetailVOListForMMS';

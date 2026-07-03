@@ -1,4 +1,4 @@
-import type { GoodsEffectRecord } from '../types/goodsEffect';
+import type { GoodsEffectRecord } from './goodsEffectTypes';
 
 type AnyObject = Record<string, unknown>;
 export type PddDigitMap = Record<string, string>;

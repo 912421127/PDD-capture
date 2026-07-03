@@ -1,5 +1,5 @@
 import { browser } from 'wxt/browser';
-import type { PddDigitMap } from './goodsEffectCapture';
+import type { PddDigitMap } from './goodsEffectExport';
 import { readGoodsEffectFontInfo } from './goodsEffectFont.ts';
 
 // 从当前页面自动获取最新字体文件，并识别加密字符到数字的映射。

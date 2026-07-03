@@ -1,7 +1,7 @@
 import { defineBackground } from 'wxt/utils/define-background';
 import { browser } from 'wxt/browser';
-import { createGoodsEffectToken, mergeGoodsEffectToken, TOKEN_STORAGE_KEY } from '../services/goodsEffectToken';
-import type { GoodsEffectToken } from '../types/goodsEffect';
+import { createGoodsEffectToken, mergeGoodsEffectToken, TOKEN_STORAGE_KEY } from '../features/goods-effect/goodsEffectToken';
+import type { GoodsEffectToken } from '../features/goods-effect/goodsEffectTypes';
 
 type RequestHeader = {
     name: string;
