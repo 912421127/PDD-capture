@@ -1,23 +1,56 @@
+/* popup 页面默认样式 */
 body {
   margin: 0;
-  min-width: 320px;
+  min-width: 360px;
   background: #f5f7fb;
 }
 
+/* Vue 挂载节点 */
 #app {
   min-height: 100vh;
 }
 
+/* popup 主容器 */
 .popup-page {
   box-sizing: border-box;
-  width: 340px;
+  width: 380px;
   padding: 20px;
 }
 
+/* 顶部状态文字 */
 .status-text {
   color: #606a78;
 }
 
+/* 提示框 */
 .tip-box {
+  margin-top: 16px;
+}
+
+/* 按钮区域和数据概览都占满 popup 宽度 */
+.form-stack,
+.action-stack,
+.summary-box {
+  width: 100%;
+}
+
+/* 表单和按钮之间留一点距离 */
+.form-stack {
+  margin-bottom: 16px;
+}
+
+/* 字段标题保持朴素，方便小白直接看懂每个输入框的含义 */
+.field-label {
+  color: #394150;
+  font-size: 13px;
+}
+
+/* Ant Design 的数字输入框默认不会撑满，这里手动设置一下 */
+.full-input {
+  width: 100%;
+}
+
+/* 数据概览和上方按钮留一点间距 */
+.summary-box {
   margin-top: 16px;
 }
