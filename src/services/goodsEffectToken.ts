@@ -30,7 +30,7 @@ export function mergeGoodsEffectToken(oldToken: GoodsEffectToken | undefined, ne
     };
 }
 
-// popup 点击“自动获取参数”时，从插件本地缓存读取最近一次记录。
+// 一键采集时，从插件本地缓存读取最近一次风控参数。
 export async function readGoodsEffectTokenFromPage(): Promise<GoodsEffectToken> {
     const data = await browser.storage.local.get(TOKEN_STORAGE_KEY);
     const token = data[TOKEN_STORAGE_KEY] as GoodsEffectToken | undefined;

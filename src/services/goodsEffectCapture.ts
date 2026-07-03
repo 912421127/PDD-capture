@@ -21,6 +21,78 @@ const FIRST_HEADERS = [
     'hdThumbUrl'
 ];
 
+// 导出 CSV 时展示给用户看的中文表头。
+// 没写在这里的字段会保留接口原字段名，避免漏字段。
+const HEADER_NAME_MAP: Record<string, string> = {
+    goodsId: '商品ID',
+    goodsName: '商品名称',
+    statDate: '统计日期',
+    goodsUv: '商品访客数',
+    goodsPv: '商品浏览量',
+    goodsFavCnt: '商品收藏用户数',
+    payOrdrCnt: '成交订单数',
+    payOrdrAmt: '成交金额',
+    goodsVcr: '成交转化率',
+    ordrCrtUsrCnt: '下单用户数',
+    ordrVstrRto: '下单率',
+    payOrdrRto: '成交率',
+    goodsStatus: '商品状态',
+    hdThumbUrl: '商品主图',
+    activityInfo: '活动信息',
+    adStrategy: '推广策略',
+    adStrategyDesc: '推广策略说明',
+    adStrategyJumpUrl: '推广跳转链接',
+    adStrategyStatus: '推广策略状态',
+    cate1Id: '一级类目ID',
+    cate1Name: '一级类目名称',
+    cate2Id: '二级类目ID',
+    cate2Name: '二级类目名称',
+    cate3Id: '三级类目ID',
+    cate3Name: '三级类目名称',
+    cate3AvgGoodsVcr: '三级类目平均成交转化率',
+    cate3PctGoodsVcr: '三级类目成交转化率排名',
+    cate3IsPgvAbove: '三级类目是否高于均值',
+    cfmOrdrCnt: '确认订单数',
+    cfmOrdrCntYtd: '昨日确认订单数',
+    cfmOrdrGoodsQty: '确认订单商品件数',
+    cfmOrdrGoodsQtyYtd: '昨日确认订单商品件数',
+    cnsltUsrQty: '咨询用户数',
+    cnsltUsrQtyYtd: '昨日咨询用户数',
+    goodsFavCntYtd: '昨日商品收藏用户数',
+    goodsLabel: '商品标签',
+    goodsPtHelpRate: '商品助力率',
+    goodsPvYtd: '昨日商品浏览量',
+    goodsUvYtd: '昨日商品访客数',
+    goodsVcrYtd: '昨日成交转化率',
+    hotGoodsActivityInfo: '热销商品活动信息',
+    imprUsrCnt: '曝光用户数',
+    imprUsrCntYtd: '昨日曝光用户数',
+    imprUsrCntDetail: '曝光用户详情',
+    isCreated1m: '是否近1月创建',
+    isNewstyle: '是否新款',
+    ordrCrtUsrCntYtd: '昨日下单用户数',
+    ordrVstrRtoYtd: '昨日下单率',
+    payOrdrAmtYtd: '昨日成交金额',
+    payOrdrCntYtd: '昨日成交订单数',
+    payOrdrGoodsQty: '成交商品件数',
+    payOrdrGoodsQtyYtd: '昨日成交商品件数',
+    payOrdrRtoYtd: '昨日成交率',
+    payOrdrUsrCnt: '成交买家数',
+    payOrdrUsrCntYtd: '昨日成交买家数',
+    pctGoodsVcr: '成交转化率百分位',
+    pctGoodsVcrYtd: '昨日成交转化率百分位',
+    peerPerfGoodsCvr: '同行优秀商品转化率',
+    peerPerfGoodsFavCnt: '同行优秀商品收藏数',
+    peerPerfGoodsPtHelpRate: '同行优秀商品助力率',
+    peerPerfGoodsPv: '同行优秀商品浏览量',
+    peerPerfGoodsUv: '同行优秀商品访客数',
+    peerPerfOrdrVstrRto: '同行优秀下单率',
+    peerPerfPayOrdrAmt: '同行优秀成交金额',
+    peerPerfPayOrdrRto: '同行优秀成交率',
+    showCol: '展示列',
+    url: '商品链接'
+};
+
 // 当前页面字体里确认出来的数字映射。
 // 后续如果 PDD 更换字体，再升级成自动解析字体文件。
 const PDD_DIGIT_MAP: PddDigitMap = {
@@ -67,6 +139,7 @@ export function normalizeGoodsEffectRecord(raw: unknown, digitMap: PddDigitMap =
 // 把采集结果转成 CSV 文本，方便直接下载到本地。
 export function toCsv(records: GoodsEffectRecord[]): string {
     const headers = collectCsvHeaders(records);
+    const displayHeaders = headers.map(getDisplayHeaderName);
 
     const rows = records.map(record => {
         return headers
@@ -77,7 +150,7 @@ export function toCsv(records: GoodsEffectRecord[]): string {
     });
 
     // Excel 更容易识别带 BOM 的 UTF-8 CSV。
-    return `\ufeff${[headers.join(','), ...rows].join('\n')}`;
+    return `\ufeff${[displayHeaders.join(','), ...rows].join('\n')}`;
 }
 
 // 收集 CSV 表头：常用字段排前面，其余字段按接口出现顺序追加。
@@ -117,6 +190,11 @@ function valueToText(value: unknown): string {
 // 判断字段是否有可导出的值。
 function hasExportValue(value: unknown): boolean {
     return value !== undefined && value !== null && value !== '';
+}
+
+// 把接口字段名转成中文表头。
+function getDisplayHeaderName(header: string): string {
+    return HEADER_NAME_MAP[header] || header;
 }
 
 // 解码 PDD 字体加密数字。没有加密字符时返回 undefined，避免多生成空字段。

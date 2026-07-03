@@ -14,16 +14,9 @@
 
             <label class="field-label">每页数量</label>
             <a-input-number v-model:value="pageSize" class="full-input" :min="1" :max="100" />
-
-            <div class="token-box">
-                <span>动态参数</span>
-                <strong>{{ tokenStatusText }}</strong>
-            </div>
         </a-space>
 
         <a-space direction="vertical" class="action-stack">
-            <a-button block @click="detectPage" :loading="task.status === 'checking'">检测页面</a-button>
-            <a-button block @click="autoReadToken" :loading="readingToken">自动获取参数</a-button>
             <a-button type="primary" block @click="captureAndExportCsv" :loading="task.status === 'running'">一键采集并导出 CSV</a-button>
             <a-space-compact block>
                 <a-button block :disabled="!canExport" @click="exportData('json')">导出 JSON</a-button>
@@ -62,7 +55,6 @@ const crawlerInfo = ref('');
 const antiContent = ref('');
 const webSpiderRule = ref('');
 const tokenCapturedAt = ref(0);
-const readingToken = ref(false);
 
 // task 保存当前采集任务状态，popup 的展示都从这里读取。
 const task = reactive<GoodsEffectCaptureTask>({
@@ -86,12 +78,6 @@ const canExport = computed(() => task.records.length > 0);
 // 三个动态参数都有值，才认为参数已经准备好。
 const hasToken = computed(() => Boolean(crawlerInfo.value && antiContent.value && webSpiderRule.value));
 
-// 参数状态文案，显示在 popup 里。
-const tokenStatusText = computed(() => {
-    if (!hasToken.value) return '未获取';
-    return tokenCapturedAt.value ? `已获取 ${new Date(tokenCapturedAt.value).toLocaleTimeString()}` : '已获取';
-});
-
 // popup 顶部展示的一句话状态。
 const statusText = computed(() => {
     if (task.status === 'running') return '正在按固定接口采集全部分页数据';
@@ -104,52 +90,12 @@ const statusText = computed(() => {
 const statusName = computed(() => {
     const names = {
         idle: '待开始',
-        checking: '检测中',
         running: '采集中',
         success: '已完成',
         failed: '失败'
     };
     return names[task.status];
 });
-
-// 点击“检测页面”：只检查当前标签页 URL，不再监听接口。
-async function detectPage() {
-    task.status = 'checking';
-    clearMessage();
-
-    try {
-        const pageUrl = await readCurrentTabUrl();
-        task.pageUrl = pageUrl;
-        task.isGoodsEffectPage = isGoodsEffectPage(pageUrl);
-        task.status = 'idle';
-        task.updatedAt = Date.now();
-
-        if (!task.isGoodsEffectPage) {
-            showMessage('error', '当前标签页不是 PDD 商品效果页，请打开指定页面后重试');
-            return;
-        }
-
-        showMessage('success', '页面正确，可以开始采集');
-    } catch (error) {
-        failTask(error);
-    }
-}
-
-// 点击“自动获取参数”：读取 PDD 页面最近一次商品接口请求里的风控参数。
-async function autoReadToken() {
-    readingToken.value = true;
-    clearMessage();
-
-    try {
-        const token = await readGoodsEffectTokenFromPage();
-        applyToken(token);
-        showMessage('success', '参数获取成功，可以开始采集');
-    } catch (error) {
-        showMessage('warning', error instanceof Error ? error.message : String(error));
-    } finally {
-        readingToken.value = false;
-    }
-}
 
 // 点击“一键采集并导出 CSV”：自动取参数、采集、解码、下载 CSV。
 async function captureAndExportCsv() {
@@ -193,7 +139,7 @@ async function startCapture() {
         task.currentPage = result.currentPage;
         task.pageSize = result.pageSize;
         task.updatedAt = Date.now();
-        showMessage('success', `采集完成：${task.records.length}/${task.total} 条，已生成解码字段`);
+        showMessage('success', `采集完成：${task.records.length}/${task.total} 条，数字已解码`);
     } catch (error) {
         failTask(error);
     }

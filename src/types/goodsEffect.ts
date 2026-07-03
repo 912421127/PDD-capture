@@ -1,5 +1,5 @@
 // 采集任务的状态，用来控制 popup 上显示什么文案。
-export type CaptureTaskStatus = 'idle' | 'checking' | 'running' | 'success' | 'failed';
+export type CaptureTaskStatus = 'idle' | 'running' | 'success' | 'failed';
 
 // 请求商品效果接口时需要的参数。
 export type GoodsEffectApiParams = {
