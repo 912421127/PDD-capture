@@ -32,6 +32,18 @@ export type GoodsEffectPageResult = {
 // PDD 接口字段很多，而且后面可能变，所以这里允许保存任意字段。
 export type GoodsEffectRecord = Record<string, unknown>;
 
+// 页面字体信息。用于分析 PDD 字体加密。
+export type GoodsEffectFontInfo = {
+    fontFaces: Array<{
+        family: string;
+        status: string;
+    }>;
+    fontUrls: string[];
+    encryptedChars: string[];
+    textSamples: string[];
+    capturedAt: number;
+};
+
 // popup 页面展示用的任务状态。
 export type GoodsEffectCaptureTask = {
     status: CaptureTaskStatus;

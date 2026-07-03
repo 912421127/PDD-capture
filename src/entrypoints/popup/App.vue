@@ -24,7 +24,7 @@
         <a-space direction="vertical" class="action-stack">
             <a-button block @click="detectPage" :loading="task.status === 'checking'">检测页面</a-button>
             <a-button block @click="autoReadToken" :loading="readingToken">自动获取参数</a-button>
-            <a-button type="primary" block @click="startCapture" :loading="task.status === 'running'">开始采集</a-button>
+            <a-button type="primary" block @click="captureAndExportCsv" :loading="task.status === 'running'">一键采集并导出 CSV</a-button>
             <a-space-compact block>
                 <a-button block :disabled="!canExport" @click="exportData('json')">导出 JSON</a-button>
                 <a-button block :disabled="!canExport" @click="exportData('csv')">导出 CSV</a-button>
@@ -47,6 +47,7 @@ import { computed, reactive, ref } from 'vue';
 import { browser } from 'wxt/browser';
 import { fetchAllGoodsEffect } from '../../services/goodsEffectApi';
 import { isGoodsEffectPage, normalizeGoodsEffectRecord, toCsv } from '../../services/goodsEffectCapture';
+import { readPddDigitMapFromPage } from '../../services/goodsEffectDigitMap';
 import { readGoodsEffectTokenFromPage } from '../../services/goodsEffectToken';
 import type { GoodsEffectApiParams, GoodsEffectCaptureTask, GoodsEffectToken } from '../../types/goodsEffect';
 
@@ -96,7 +97,7 @@ const statusText = computed(() => {
     if (task.status === 'running') return '正在按固定接口采集全部分页数据';
     if (task.status === 'success') return `采集完成，共 ${task.records.length} 条`;
     if (task.status === 'failed') return task.error || '采集失败';
-    return '打开 PDD 商品效果页后，填写风控字段并开始采集';
+    return '打开 PDD 商品效果页后，可以一键采集并导出';
 });
 
 // 把状态码转成更容易看懂的中文。
@@ -150,7 +151,16 @@ async function autoReadToken() {
     }
 }
 
-// 点击“开始采集”：把固定接口请求函数注入到当前 PDD 页面里执行。
+// 点击“一键采集并导出 CSV”：自动取参数、采集、解码、下载 CSV。
+async function captureAndExportCsv() {
+    await startCapture();
+
+    if (task.status === 'success' && task.records.length > 0) {
+        exportData('csv');
+    }
+}
+
+// 开始采集：把固定接口请求函数注入到当前 PDD 页面里执行。
 async function startCapture() {
     task.status = 'running';
     task.records = [];
@@ -175,14 +185,15 @@ async function startCapture() {
             applyToken(token);
         }
 
+        const digitMap = await readPddDigitMapFromPage();
         const result = await fetchAllGoodsEffect(buildParams());
         task.status = 'success';
-        task.records = result.records.map(normalizeGoodsEffectRecord);
+        task.records = result.records.map(record => normalizeGoodsEffectRecord(record, digitMap));
         task.total = result.total;
         task.currentPage = result.currentPage;
         task.pageSize = result.pageSize;
         task.updatedAt = Date.now();
-        showMessage('success', `采集完成：${task.records.length}/${task.total} 条`);
+        showMessage('success', `采集完成：${task.records.length}/${task.total} 条，已生成解码字段`);
     } catch (error) {
         failTask(error);
     }
@@ -195,6 +206,11 @@ function exportData(format: 'json' | 'csv') {
     const data = format === 'csv' ? toCsv(task.records) : JSON.stringify(task.records, null, 2);
     const type = format === 'csv' ? 'text/csv;charset=utf-8' : 'application/json;charset=utf-8';
 
+    downloadTextFile(filename, data, type);
+}
+
+// 下载文本文件。JSON 和 CSV 都走这里，避免重复代码。
+function downloadTextFile(filename: string, data: string, type: string) {
     const blob = new Blob([data], { type });
     const url = URL.createObjectURL(blob);
     const link = document.createElement('a');

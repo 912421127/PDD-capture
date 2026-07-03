@@ -1,6 +1,7 @@
 import type { GoodsEffectRecord } from '../types/goodsEffect';
 
 type AnyObject = Record<string, unknown>;
+export type PddDigitMap = Record<string, string>;
 
 // 常用字段放在前面，导出的 CSV 更好读。
 const FIRST_HEADERS = [
@@ -20,6 +21,21 @@ const FIRST_HEADERS = [
     'hdThumbUrl'
 ];
 
+// 当前页面字体里确认出来的数字映射。
+// 后续如果 PDD 更换字体，再升级成自动解析字体文件。
+const PDD_DIGIT_MAP: PddDigitMap = {
+    '': '0',
+    '': '1',
+    '': '2',
+    '': '3',
+    '': '4',
+    '': '5',
+    '': '6',
+    '': '7',
+    '': '8',
+    '': '9'
+};
+
 // 判断当前页面是不是 PDD 商品效果页。
 export function isGoodsEffectPage(url: string): boolean {
     try {
@@ -32,14 +48,17 @@ export function isGoodsEffectPage(url: string): boolean {
 
 // 把接口返回的原始商品数据整理成导出对象。
 // 第一版不丢字段：接口里有什么字段，这里就保留什么字段。
-export function normalizeGoodsEffectRecord(raw: unknown): GoodsEffectRecord {
+export function normalizeGoodsEffectRecord(raw: unknown, digitMap: PddDigitMap = PDD_DIGIT_MAP): GoodsEffectRecord {
     const row = isObject(raw) ? raw : {};
     const record: GoodsEffectRecord = {};
 
     for (const [key, value] of Object.entries(row)) {
         // raw 是调试用字段，用户导出时不需要看到。
         if (key === 'raw') continue;
-        record[key] = value;
+        // 如果字段里含有 PDD 加密数字，直接把原字段替换成明文。
+        // 这样 Excel 里不会再看到加密字符，也不会多出一堆重复列。
+        const decodedValue = decodePddDigitText(value, digitMap);
+        record[key] = decodedValue ?? value;
     }
 
     return record;
@@ -98,6 +117,26 @@ function valueToText(value: unknown): string {
 // 判断字段是否有可导出的值。
 function hasExportValue(value: unknown): boolean {
     return value !== undefined && value !== null && value !== '';
+}
+
+// 解码 PDD 字体加密数字。没有加密字符时返回 undefined，避免多生成空字段。
+function decodePddDigitText(value: unknown, digitMap: PddDigitMap): string | undefined {
+    if (typeof value !== 'string') return undefined;
+
+    let hasEncryptedChar = false;
+    let decodedText = '';
+
+    for (const char of value) {
+        const decodedChar = digitMap[char];
+        if (decodedChar !== undefined) {
+            hasEncryptedChar = true;
+            decodedText += decodedChar;
+        } else {
+            decodedText += char;
+        }
+    }
+
+    return hasEncryptedChar ? decodedText : undefined;
 }
 
 // 简单判断一个值是不是普通对象。
