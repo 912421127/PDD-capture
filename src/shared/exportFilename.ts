@@ -1,4 +1,4 @@
-export type ExportFormat = 'json' | 'csv';
+export type ExportFormat = 'json' | 'csv' | 'xlsx';
 
 // 导出文件名统一使用北京时间，避免浏览器本地时区或 UTC 导致时间不对。
 export function formatBeijingDateTime(date = new Date()): string {

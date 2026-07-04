@@ -1,7 +1,14 @@
+import * as XLSX from 'xlsx';
 import { decodePddDigitText, type PddDigitMap } from '../goods-effect/goodsEffectExport.ts';
 import type { StoreOperationRawResult, StoreOperationResult } from './storeOperationTypes';
 
 type AnyObject = Record<string, unknown>;
+type SpreadsheetCell = string | number | boolean | null;
+
+export type StoreOperationWorkbookSheet = {
+    name: string;
+    rows: SpreadsheetCell[][];
+};
 
 const TRADE_INFO_NAME_MAP: Record<string, string> = {
     payOrdrAmt: '成交金额',
@@ -69,7 +76,7 @@ export function buildStoreOperationCsvFiles(result: StoreOperationResult): Store
     return [
         {
             name: '交易概况-指标卡片',
-            data: buildTradeInfoCsv(result.tradeInfo)
+            data: rowsToCsv(buildTradeInfoRows(result.tradeInfo))
         },
         {
             name: '交易概况-趋势累计',
@@ -88,6 +95,41 @@ export function buildStoreOperationCsvFiles(result: StoreOperationResult): Store
     ];
 }
 
+export function buildStoreOperationWorkbookData(result: StoreOperationResult): StoreOperationWorkbookSheet[] {
+    return [
+        {
+            name: '指标卡片',
+            rows: buildTradeInfoRows(result.tradeInfo)
+        },
+        {
+            name: '趋势累计',
+            rows: buildTrendRows([
+                ...readList(result.tradeTrend.todayRtList).map(row => ({ dataType: '今日累计', ...row })),
+                ...readList(result.tradeTrend.yesterdayRtList).map(row => ({ dataType: '昨日累计', ...row }))
+            ])
+        },
+        {
+            name: '趋势分小时',
+            rows: buildTrendRows([
+                ...readList(result.tradeTrend.todayPerHourRtList).map(row => ({ dataType: '今日分小时', ...row })),
+                ...readList(result.tradeTrend.yesterdayPerHourRtList).map(row => ({ dataType: '昨日分小时', ...row }))
+            ])
+        }
+    ];
+}
+
+export function buildStoreOperationXlsx(result: StoreOperationResult): ArrayBuffer {
+    const workbook = XLSX.utils.book_new();
+
+    for (const sheet of buildStoreOperationWorkbookData(result)) {
+        const worksheet = XLSX.utils.aoa_to_sheet(sheet.rows);
+        worksheet['!cols'] = buildColumnWidths(sheet.rows);
+        XLSX.utils.book_append_sheet(workbook, worksheet, sheet.name);
+    }
+
+    return XLSX.write(workbook, { bookType: 'xlsx', type: 'array' }) as ArrayBuffer;
+}
+
 function buildTradeInfoDisplay(tradeInfo: AnyObject): AnyObject {
     const display: AnyObject = {};
 
@@ -104,27 +146,32 @@ function buildTradeInfoDisplay(tradeInfo: AnyObject): AnyObject {
     return display;
 }
 
-function buildTradeInfoCsv(tradeInfo: AnyObject): string {
-    const rows = TRADE_INFO_ORDER.map(key => ({
-        指标: TRADE_INFO_NAME_MAP[key],
-        当前值: tradeInfo[key],
-        对比值: tradeInfo[`${key}Pct`],
-        是否百分比: tradeInfo[`${key}IsPercent`],
-        是否上涨: tradeInfo[`${key}PctRised`]
-    })).filter(row => hasValue(row.当前值) || hasValue(row.对比值));
-
-    return toCsv(rows, ['指标', '当前值', '对比值', '是否百分比', '是否上涨']);
-}
-
 function buildTrendCsv(rows: AnyObject[]): string {
-    return toCsv(rows, collectHeaders(rows, TREND_HEADER_ORDER), TREND_HEADER_NAME_MAP);
+    return rowsToCsv(buildTrendRows(rows));
 }
 
-function toCsv(rows: AnyObject[], headers: string[], headerNameMap: Record<string, string> = {}): string {
-    const headerLine = headers.map(header => headerNameMap[header] || header).join(',');
-    const bodyLines = rows.map(row => headers.map(header => csvCell(row[header])).join(','));
+function buildTradeInfoRows(tradeInfo: AnyObject): SpreadsheetCell[][] {
+    const rows = TRADE_INFO_ORDER.map(key => [
+        TRADE_INFO_NAME_MAP[key],
+        toSpreadsheetCell(tradeInfo[key]),
+        toSpreadsheetCell(tradeInfo[`${key}Pct`]),
+        toSpreadsheetCell(tradeInfo[`${key}IsPercent`]),
+        toSpreadsheetCell(tradeInfo[`${key}PctRised`])
+    ]).filter(row => hasValue(row[1]) || hasValue(row[2]));
 
-    return `\ufeff${[headerLine, ...bodyLines].join('\n')}`;
+    return [['指标', '当前值', '对比值', '是否百分比', '是否上涨'], ...rows];
+}
+
+function buildTrendRows(rows: AnyObject[]): SpreadsheetCell[][] {
+    const headers = collectHeaders(rows, TREND_HEADER_ORDER);
+    const displayHeaders = headers.map(header => TREND_HEADER_NAME_MAP[header] || header);
+    const bodyRows = rows.map(row => headers.map(header => toSpreadsheetCell(row[header])));
+
+    return [displayHeaders, ...bodyRows];
+}
+
+function rowsToCsv(rows: SpreadsheetCell[][]): string {
+    return `\ufeff${rows.map(row => row.map(csvCell).join(',')).join('\n')}`;
 }
 
 function collectHeaders(rows: AnyObject[], firstHeaders: string[]): string[] {
@@ -141,6 +188,19 @@ function collectHeaders(rows: AnyObject[], firstHeaders: string[]): string[] {
     }
 
     return Array.from(headers);
+}
+
+function buildColumnWidths(rows: SpreadsheetCell[][]): XLSX.ColInfo[] {
+    const columnCount = Math.max(0, ...rows.map(row => row.length));
+
+    return Array.from({ length: columnCount }, (_, columnIndex) => {
+        const maxLength = Math.max(
+            8,
+            ...rows.map(row => valueToText(row[columnIndex]).length)
+        );
+
+        return { wch: Math.min(Math.max(maxLength + 2, 10), 28) };
+    });
 }
 
 function decodeObject(value: unknown, digitMap: PddDigitMap): AnyObject {
@@ -177,6 +237,12 @@ function readList(value: unknown): AnyObject[] {
 function csvCell(value: unknown): string {
     const text = valueToText(value);
     return `"${text.replace(/"/g, '""')}"`;
+}
+
+function toSpreadsheetCell(value: unknown): SpreadsheetCell {
+    if (value === undefined || value === null || value === '') return null;
+    if (typeof value === 'string' || typeof value === 'number' || typeof value === 'boolean') return value;
+    return JSON.stringify(value);
 }
 
 function valueToText(value: unknown): string {

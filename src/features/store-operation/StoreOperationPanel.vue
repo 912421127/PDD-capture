@@ -11,7 +11,7 @@
             <a-button type="primary" block @click="captureAndExport" :loading="task.status === 'running'">一键采集并导出</a-button>
             <a-space-compact block>
                 <a-button block :disabled="!canExport" @click="exportJson">导出 JSON</a-button>
-                <a-button block :disabled="!canExport" @click="exportCsvFiles">导出 CSV</a-button>
+                <a-button block :disabled="!canExport" @click="exportExcel">导出 Excel</a-button>
             </a-space-compact>
         </a-space>
 
@@ -38,6 +38,6 @@ const {
     statusName,
     captureAndExport,
     exportJson,
-    exportCsvFiles
+    exportExcel
 } = useStoreOperationCapture();
 </script>

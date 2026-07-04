@@ -1,5 +1,5 @@
 import { computed, reactive, ref } from 'vue';
-import { downloadTextFile } from '../../shared/download';
+import { downloadBinaryFile, downloadTextFile } from '../../shared/download';
 import { buildExportFilename, type ExportFormat } from '../../shared/exportFilename';
 import { readCurrentTabUrl } from '../../shared/page';
 import { readPddDigitMapFromPage } from '../goods-effect/goodsEffectDigitMap';
@@ -10,6 +10,7 @@ import {
 } from './storeOperationApi';
 import {
     buildStoreOperationCsvFiles,
+    buildStoreOperationXlsx,
     isStoreOperationPage,
     normalizeStoreOperationResult,
     toStoreOperationJson
@@ -57,7 +58,7 @@ export function useStoreOperationCapture() {
 
         if (task.status === 'success' && task.result) {
             exportJson();
-            exportCsvFiles();
+            exportExcel();
         }
     }
 
@@ -98,9 +99,9 @@ export function useStoreOperationCapture() {
         exportData('json');
     }
 
-    function exportCsvFiles() {
+    function exportExcel() {
         if (!task.result) return;
-        exportData('csv');
+        exportData('xlsx');
     }
 
     function exportData(format: ExportFormat) {
@@ -109,6 +110,16 @@ export function useStoreOperationCapture() {
         if (format === 'json') {
             const filename = buildExportFilename('经营数据页面导出', 'json');
             downloadTextFile(filename, toStoreOperationJson(task.result), 'application/json;charset=utf-8');
+            return;
+        }
+
+        if (format === 'xlsx') {
+            const filename = buildExportFilename('交易概况', 'xlsx');
+            downloadBinaryFile(
+                filename,
+                buildStoreOperationXlsx(task.result),
+                'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'
+            );
             return;
         }
 
@@ -154,6 +165,6 @@ export function useStoreOperationCapture() {
         captureAndExport,
         startCapture,
         exportJson,
-        exportCsvFiles
+        exportExcel
     };
 }
