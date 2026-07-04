@@ -14,6 +14,8 @@ export type GoodsEffectDateSelection = {
     selectedMonth: GoodsEffectDateRange | string;
 };
 
+export type GoodsEffectPickerDate = string | { format: (format: string) => string };
+
 export const goodsEffectTimeOptions: Array<{ label: string; value: GoodsEffectTimePreset }> = [
     { label: '实时', value: 'realtime' },
     { label: '昨日', value: 'yesterday' },
@@ -65,11 +67,18 @@ export function buildGoodsEffectDateParams(
 
     if (preset === 'custom') {
         const customDate = selection.customDate || formatDate(today);
-        return buildParams(customDate, customDate, 5);
+        return buildParams(customDate, customDate, 0);
     }
 
     const date = formatDate(today);
     return buildParams(date, date, 6);
+}
+
+export function isAfterTodayForGoodsEffect(value: GoodsEffectPickerDate, now = new Date()): boolean {
+    const dateText = typeof value === 'string' ? value : value.format('YYYY-MM-DD');
+    const date = parseDate(dateText, startOfDay(now));
+
+    return date.getTime() > startOfDay(now).getTime();
 }
 
 function buildParams(startDate: string, endDate: string, queryType: number): GoodsEffectDateParams {

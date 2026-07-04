@@ -1,4 +1,5 @@
 <template>
+    <AConfigProvider :locale="zhCN">
     <main class="popup-page">
         <header class="popup-header">
             <h1 class="popup-title">PDD 店铺数据采集</h1>
@@ -21,9 +22,12 @@
         <GoodsEffectPanel v-if="activeFeature === 'goods-effect'" />
         <StoreOperationPanel v-if="activeFeature === 'store-operation'" />
     </main>
+    </AConfigProvider>
 </template>
 
 <script setup lang="ts">
+import { ConfigProvider as AConfigProvider } from 'ant-design-vue';
+import zhCN from 'ant-design-vue/es/locale/zh_CN';
 import { computed, defineAsyncComponent, ref } from 'vue';
 import { getDefaultPopupFeature, POPUP_FEATURE_OPTIONS, type PopupFeatureKey } from './popupFeatures';
 

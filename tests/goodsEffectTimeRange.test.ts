@@ -1,6 +1,10 @@
 import assert from 'node:assert/strict';
 import { test } from 'node:test';
-import { buildGoodsEffectDateParams, GOODS_EFFECT_PAGE_SIZE } from '../src/features/goods-effect/goodsEffectTimeRange.ts';
+import {
+    buildGoodsEffectDateParams,
+    GOODS_EFFECT_PAGE_SIZE,
+    isAfterTodayForGoodsEffect
+} from '../src/features/goods-effect/goodsEffectTimeRange.ts';
 
 test('builds realtime params with fixed page size', () => {
     assert.equal(GOODS_EFFECT_PAGE_SIZE, 50);
@@ -60,4 +64,12 @@ test('builds week month and custom ranges from selected dates', () => {
         queryType: 5,
         pageSize: 50
     });
+});
+
+test('detects dates after today for picker disabling', () => {
+    const now = new Date('2026-07-04T10:00:00+08:00');
+
+    assert.equal(isAfterTodayForGoodsEffect('2026-07-04', now), false);
+    assert.equal(isAfterTodayForGoodsEffect('2026-07-05', now), true);
+    assert.equal(isAfterTodayForGoodsEffect({ format: () => '2026-07-05' }, now), true);
 });

@@ -11,17 +11,17 @@
 
                 <template v-if="isWeekTime">
                     <label class="field-label">选择周</label>
-                    <AWeekPicker v-model:value="weekPickerDate" class="full-input" value-format="YYYY-MM-DD" placeholder="请选择周" @change="changeSelectedWeekDate" />
+                    <AWeekPicker v-model:value="weekPickerDate" class="full-input" placeholder="请选择周" :disabled-date="disabledFutureDate" @change="changeSelectedWeekDate" />
                 </template>
 
                 <template v-if="isMonthTime">
                     <label class="field-label">选择月份</label>
-                    <AMonthPicker v-model:value="monthPickerDate" class="full-input" value-format="YYYY-MM" placeholder="请选择月份" @change="changeSelectedMonth" />
+                    <AMonthPicker v-model:value="monthPickerDate" class="full-input" placeholder="请选择月份" :disabled-date="disabledFutureDate" @change="changeSelectedMonth" />
                 </template>
 
                 <template v-if="isCustomTime">
                     <label class="field-label">选择日期</label>
-                    <ADatePicker v-model:value="customDate" class="full-input" value-format="YYYY-MM-DD" placeholder="请选择日期" />
+                    <ADatePicker v-model:value="customDate" class="full-input" value-format="YYYY-MM-DD" placeholder="请选择日期" :disabled-date="disabledFutureDate" />
                 </template>
             </ASpace>
         </template>
@@ -69,6 +69,7 @@ const {
     monthPickerDate,
     changeSelectedWeekDate,
     changeSelectedMonth,
+    disabledFutureDate,
     task,
     message,
     messageType,

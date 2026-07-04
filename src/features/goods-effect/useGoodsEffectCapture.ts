@@ -5,9 +5,14 @@ import { readCurrentTabUrl } from '../../shared/page';
 import { fetchAllGoodsEffect } from './goodsEffectApi';
 import { isGoodsEffectPage, normalizeGoodsEffectRecord, toCsv } from './goodsEffectExport';
 import { readPddDigitMapFromPage } from './goodsEffectDigitMap';
-import { buildGoodsEffectDateParams, GOODS_EFFECT_PAGE_SIZE, goodsEffectTimeOptions } from './goodsEffectTimeRange';
+import {
+    buildGoodsEffectDateParams,
+    GOODS_EFFECT_PAGE_SIZE,
+    goodsEffectTimeOptions,
+    isAfterTodayForGoodsEffect
+} from './goodsEffectTimeRange';
 import { readGoodsEffectTokenFromPage } from './goodsEffectToken';
-import type { GoodsEffectDateRange, GoodsEffectTimePreset } from './goodsEffectTimeRange';
+import type { GoodsEffectDateRange, GoodsEffectPickerDate, GoodsEffectTimePreset } from './goodsEffectTimeRange';
 import type { GoodsEffectApiParams, GoodsEffectCaptureTask, GoodsEffectToken } from './goodsEffectTypes';
 
 // 商品效果采集面板的全部状态和动作都放在这里。
@@ -18,8 +23,8 @@ export function useGoodsEffectCapture() {
     // 页面表单值。
     const timePreset = ref<GoodsEffectTimePreset>('realtime');
     const customDate = ref(today);
-    const weekPickerDate = ref(today);
-    const monthPickerDate = ref(today.slice(0, 7));
+    const weekPickerDate = ref();
+    const monthPickerDate = ref();
     const selectedWeekDate = ref<GoodsEffectDateRange>(readRangeFromDateParams(buildGoodsEffectDateParams('week')));
     const selectedMonth = ref<GoodsEffectDateRange>(readRangeFromDateParams(buildGoodsEffectDateParams('month')));
     const isCustomTime = computed(() => timePreset.value === 'custom');
@@ -145,20 +150,23 @@ export function useGoodsEffectCapture() {
         };
     }
 
-    function changeSelectedWeekDate(_: unknown, dateString: string | string[]) {
-        const value = readPickerValue(dateString);
+    function changeSelectedWeekDate(date: unknown, dateString: string | string[]) {
+        const value = readPickerDate(date, dateString, 'YYYY-MM-DD');
         if (!value) return;
 
-        weekPickerDate.value = value;
         selectedWeekDate.value = readRangeFromDateParams(buildGoodsEffectDateParams('week', new Date(), { selectedWeekDate: value }));
     }
 
-    function changeSelectedMonth(_: unknown, dateString: string | string[]) {
-        const value = readPickerValue(dateString);
+    function changeSelectedMonth(date: unknown, dateString: string | string[]) {
+        const value = readPickerDate(date, dateString, 'YYYY-MM');
         if (!value) return;
 
-        monthPickerDate.value = value;
         selectedMonth.value = readRangeFromDateParams(buildGoodsEffectDateParams('month', new Date(), { selectedMonth: value }));
+    }
+
+    function disabledFutureDate(current: GoodsEffectPickerDate) {
+        // 日期选择器只允许选今天及以前，避免传入 PDD 还没有数据的未来日期。
+        return isAfterTodayForGoodsEffect(current);
     }
 
     function hasToken(): boolean {
@@ -198,6 +206,7 @@ export function useGoodsEffectCapture() {
         monthPickerDate,
         changeSelectedWeekDate,
         changeSelectedMonth,
+        disabledFutureDate,
         task,
         message,
         messageType,
@@ -214,6 +223,12 @@ function readRangeFromDateParams(params: Pick<GoodsEffectApiParams, 'startDate' 
     return [params.startDate, params.endDate];
 }
 
-function readPickerValue(dateString: string | string[]): string {
+function readPickerDate(date: unknown, dateString: string | string[], format: string): string {
+    if (hasFormatFunction(date)) return date.format(format);
+
     return Array.isArray(dateString) ? dateString[0] || '' : dateString;
+}
+
+function hasFormatFunction(value: unknown): value is { format: (format: string) => string } {
+    return Boolean(value && typeof value === 'object' && 'format' in value && typeof value.format === 'function');
 }
