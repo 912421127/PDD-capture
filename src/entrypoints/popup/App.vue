@@ -28,7 +28,8 @@
 <script setup lang="ts">
 import { ConfigProvider as AConfigProvider } from 'ant-design-vue';
 import zhCN from 'ant-design-vue/es/locale/zh_CN';
-import { computed, defineAsyncComponent, ref } from 'vue';
+import { computed, defineAsyncComponent, onMounted, ref } from 'vue';
+import { readCurrentTabUrl } from '../../shared/page';
 import { getDefaultPopupFeature, POPUP_FEATURE_OPTIONS, type PopupFeatureKey } from './popupFeatures';
 
 // popup 首屏只加载选择器，具体采集面板等用户选中后再加载，减少打开时的等待。
@@ -36,6 +37,16 @@ const GoodsEffectPanel = defineAsyncComponent(() => import('../../features/goods
 const StoreOperationPanel = defineAsyncComponent(() => import('../../features/store-operation/StoreOperationPanel.vue'));
 
 const activeFeature = ref<PopupFeatureKey>(getDefaultPopupFeature());
+
+onMounted(async () => {
+    try {
+        // popup 打开后读取当前标签页地址，匹配到已支持页面才自动选中对应采集组件。
+        activeFeature.value = getDefaultPopupFeature(await readCurrentTabUrl());
+    } catch {
+        // 浏览器没有返回当前标签页地址时保持未选择，用户仍然可以手动选择功能。
+        activeFeature.value = '';
+    }
+});
 
 const activeFeatureDescription = computed(() => {
     return POPUP_FEATURE_OPTIONS.find(option => option.value === activeFeature.value)?.description || '';

@@ -1,3 +1,6 @@
+import { isGoodsEffectPage } from '../../features/goods-effect/goodsEffectExport.ts';
+import { isStoreOperationPage } from '../../features/store-operation/storeOperationExport.ts';
+
 export type PopupFeatureKey = '' | 'goods-effect' | 'store-operation';
 
 export type PopupFeatureOption = {
@@ -20,6 +23,9 @@ export const POPUP_FEATURE_OPTIONS: PopupFeatureOption[] = [
     }
 ];
 
-export function getDefaultPopupFeature(): PopupFeatureKey {
+export function getDefaultPopupFeature(pageUrl = ''): PopupFeatureKey {
+    // 打开 popup 时按当前页面精确匹配采集功能；没有匹配时保持未选择，避免误导用户。
+    if (isGoodsEffectPage(pageUrl)) return 'goods-effect';
+    if (isStoreOperationPage(pageUrl)) return 'store-operation';
     return '';
 }
