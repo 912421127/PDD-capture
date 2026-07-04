@@ -5,18 +5,26 @@ import { readCurrentTabUrl } from '../../shared/page';
 import { fetchAllGoodsEffect } from './goodsEffectApi';
 import { isGoodsEffectPage, normalizeGoodsEffectRecord, toCsv } from './goodsEffectExport';
 import { readPddDigitMapFromPage } from './goodsEffectDigitMap';
+import { buildGoodsEffectDateParams, GOODS_EFFECT_PAGE_SIZE, goodsEffectTimeOptions } from './goodsEffectTimeRange';
 import { readGoodsEffectTokenFromPage } from './goodsEffectToken';
+import type { GoodsEffectDateRange, GoodsEffectTimePreset } from './goodsEffectTimeRange';
 import type { GoodsEffectApiParams, GoodsEffectCaptureTask, GoodsEffectToken } from './goodsEffectTypes';
 
 // 商品效果采集面板的全部状态和动作都放在这里。
 // popup 只负责展示组件，后续新增功能不会继续挤进 App.vue。
 export function useGoodsEffectCapture() {
-    const today = new Date().toISOString().slice(0, 10);
+    const today = buildGoodsEffectDateParams('realtime').startDate;
 
     // 页面表单值。
-    const startDate = ref(today);
-    const endDate = ref(today);
-    const pageSize = ref(50);
+    const timePreset = ref<GoodsEffectTimePreset>('realtime');
+    const customDate = ref(today);
+    const weekPickerDate = ref(today);
+    const monthPickerDate = ref(today.slice(0, 7));
+    const selectedWeekDate = ref<GoodsEffectDateRange>(readRangeFromDateParams(buildGoodsEffectDateParams('week')));
+    const selectedMonth = ref<GoodsEffectDateRange>(readRangeFromDateParams(buildGoodsEffectDateParams('month')));
+    const isCustomTime = computed(() => timePreset.value === 'custom');
+    const isWeekTime = computed(() => timePreset.value === 'week');
+    const isMonthTime = computed(() => timePreset.value === 'month');
 
     // PDD 接口需要的动态风控参数，由 background 监听页面请求后缓存。
     const crawlerInfo = ref('');
@@ -29,7 +37,7 @@ export function useGoodsEffectCapture() {
         isGoodsEffectPage: false,
         total: 0,
         currentPage: 0,
-        pageSize: 50,
+        pageSize: GOODS_EFFECT_PAGE_SIZE,
         records: [],
         updatedAt: Date.now()
     });
@@ -69,7 +77,7 @@ export function useGoodsEffectCapture() {
         task.records = [];
         task.total = 0;
         task.currentPage = 0;
-        task.pageSize = pageSize.value || 50;
+        task.pageSize = GOODS_EFFECT_PAGE_SIZE;
         task.error = undefined;
         clearMessage();
 
@@ -122,15 +130,35 @@ export function useGoodsEffectCapture() {
     }
 
     function buildParams(): GoodsEffectApiParams {
+        // 时间范围只允许来自页面固定选项，避免用户随手输入导致接口参数不符合 PDD 页面行为。
+        const dateParams = buildGoodsEffectDateParams(timePreset.value, new Date(), {
+            customDate: customDate.value,
+            selectedWeekDate: selectedWeekDate.value,
+            selectedMonth: selectedMonth.value
+        });
+
         return {
-            startDate: startDate.value,
-            endDate: endDate.value,
-            queryType: 6,
-            pageSize: pageSize.value || 50,
+            ...dateParams,
             crawlerInfo: crawlerInfo.value.trim(),
             antiContent: antiContent.value.trim(),
             webSpiderRule: webSpiderRule.value.trim()
         };
+    }
+
+    function changeSelectedWeekDate(_: unknown, dateString: string | string[]) {
+        const value = readPickerValue(dateString);
+        if (!value) return;
+
+        weekPickerDate.value = value;
+        selectedWeekDate.value = readRangeFromDateParams(buildGoodsEffectDateParams('week', new Date(), { selectedWeekDate: value }));
+    }
+
+    function changeSelectedMonth(_: unknown, dateString: string | string[]) {
+        const value = readPickerValue(dateString);
+        if (!value) return;
+
+        monthPickerDate.value = value;
+        selectedMonth.value = readRangeFromDateParams(buildGoodsEffectDateParams('month', new Date(), { selectedMonth: value }));
     }
 
     function hasToken(): boolean {
@@ -160,9 +188,16 @@ export function useGoodsEffectCapture() {
     }
 
     return {
-        startDate,
-        endDate,
-        pageSize,
+        timePreset,
+        isCustomTime,
+        isWeekTime,
+        isMonthTime,
+        goodsEffectTimeOptions,
+        customDate,
+        weekPickerDate,
+        monthPickerDate,
+        changeSelectedWeekDate,
+        changeSelectedMonth,
         task,
         message,
         messageType,
@@ -173,4 +208,12 @@ export function useGoodsEffectCapture() {
         exportJson,
         exportCsv
     };
+}
+
+function readRangeFromDateParams(params: Pick<GoodsEffectApiParams, 'startDate' | 'endDate'>): GoodsEffectDateRange {
+    return [params.startDate, params.endDate];
+}
+
+function readPickerValue(dateString: string | string[]): string {
+    return Array.isArray(dateString) ? dateString[0] || '' : dateString;
 }

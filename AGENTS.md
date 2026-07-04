@@ -1,5 +1,5 @@
 # AGENTS.md
-
+DO NOT send optional commentary
 这份文件是给 Codex/AI 助手看的项目协作约定。修改这个项目时，请优先照顾新手可读性：代码要简单、直白、容易理解。
 
 ## 写代码原则

@@ -86,6 +86,26 @@ body {
   outline: none;
 }
 
+/* 商品数据时间快捷项固定换行展示，避免 popup 宽度较小时挤出屏幕。 */
+.time-preset-group {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  width: 100%;
+}
+
+.time-preset-group .ant-radio-button-wrapper {
+  border-radius: 6px;
+  border-inline-start-width: 1px;
+  flex: 1 0 calc(25% - 6px);
+  min-width: 62px;
+  text-align: center;
+}
+
+.time-preset-group .ant-radio-button-wrapper::before {
+  display: none;
+}
+
 /* 功能选择区独立放在顶部，避免后续功能增加后入口变乱 */
 .feature-picker {
   margin-bottom: 16px;

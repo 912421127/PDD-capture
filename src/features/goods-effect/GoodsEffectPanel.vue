@@ -2,14 +2,27 @@
     <CapturePanelShell :status-text="statusText" :message="message" :message-type="messageType">
         <template #form>
             <ASpace direction="vertical" class="form-stack">
-                <label class="field-label">开始日期</label>
-                <AInput v-model:value="startDate" placeholder="例如：2026-07-03" />
+                <label class="field-label">时间范围</label>
+                <ARadioGroup v-model:value="timePreset" class="time-preset-group" button-style="solid">
+                    <ARadioButton v-for="option in goodsEffectTimeOptions" :key="option.value" :value="option.value">
+                        {{ option.label }}
+                    </ARadioButton>
+                </ARadioGroup>
 
-                <label class="field-label">结束日期</label>
-                <AInput v-model:value="endDate" placeholder="例如：2026-07-03" />
+                <template v-if="isWeekTime">
+                    <label class="field-label">选择周</label>
+                    <AWeekPicker v-model:value="weekPickerDate" class="full-input" value-format="YYYY-MM-DD" placeholder="请选择周" @change="changeSelectedWeekDate" />
+                </template>
 
-                <label class="field-label">每页数量</label>
-                <AInputNumber v-model:value="pageSize" class="full-input" :min="1" :max="100" />
+                <template v-if="isMonthTime">
+                    <label class="field-label">选择月份</label>
+                    <AMonthPicker v-model:value="monthPickerDate" class="full-input" value-format="YYYY-MM" placeholder="请选择月份" @change="changeSelectedMonth" />
+                </template>
+
+                <template v-if="isCustomTime">
+                    <label class="field-label">选择日期</label>
+                    <ADatePicker v-model:value="customDate" class="full-input" value-format="YYYY-MM-DD" placeholder="请选择日期" />
+                </template>
             </ASpace>
         </template>
 
@@ -35,18 +48,27 @@
 </template>
 
 <script setup lang="ts">
-import { Descriptions, Input as AInput, InputNumber as AInputNumber, Space as ASpace } from 'ant-design-vue';
+import { WeekPicker as AWeekPicker, MonthPicker as AMonthPicker, DatePicker as ADatePicker, Descriptions, Radio as ARadio, Space as ASpace } from 'ant-design-vue';
 import CapturePanelShell from '../../shared/components/CapturePanelShell.vue';
 import ExportActions from '../../shared/components/ExportActions.vue';
 import { useGoodsEffectCapture } from './useGoodsEffectCapture';
 
 const ADescriptionsItem = Descriptions.Item;
+const ARadioGroup = ARadio.Group;
+const ARadioButton = ARadio.Button;
 
 // 商品效果采集的全部状态和动作，都由 composable 统一管理。
 const {
-    startDate,
-    endDate,
-    pageSize,
+    timePreset,
+    isCustomTime,
+    isWeekTime,
+    isMonthTime,
+    goodsEffectTimeOptions,
+    customDate,
+    weekPickerDate,
+    monthPickerDate,
+    changeSelectedWeekDate,
+    changeSelectedMonth,
     task,
     message,
     messageType,
