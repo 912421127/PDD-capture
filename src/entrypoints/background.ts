@@ -2,7 +2,14 @@ import { defineBackground } from 'wxt/utils/define-background';
 import { browser } from 'wxt/browser';
 import { createGoodsEffectToken, mergeGoodsEffectToken, TOKEN_STORAGE_KEY } from '../features/goods-effect/goodsEffectToken';
 import type { GoodsEffectToken } from '../features/goods-effect/goodsEffectTypes';
-import { STORE_OPERATION_TRADE_INFO_API, STORE_OPERATION_TRADE_LIST_API } from '../features/store-operation/storeOperationApi';
+import {
+    STORE_OPERATION_ANNUAL_SALES_API,
+    STORE_OPERATION_GEOGRAPHY_API,
+    STORE_OPERATION_LEAD_PAY_API,
+    STORE_OPERATION_NOT_PAY_ORDER_API,
+    STORE_OPERATION_TRADE_INFO_API,
+    STORE_OPERATION_TRADE_LIST_API
+} from '../features/store-operation/storeOperationApi';
 import {
     createStoreOperationToken,
     createStoreOperationTokenCache,
@@ -27,6 +34,14 @@ type RequestBodyDetails = {
 // 商品效果接口。background 会监听这个接口，从真实请求里拿动态参数。
 const GOODS_EFFECT_API = 'https://mms.pinduoduo.com/sydney/api/goodsDataShow/queryGoodsDetailVOListForMMS';
 const PDD_MMS_URLS = ['https://mms.pinduoduo.com/*'];
+const STORE_OPERATION_API_URLS = [
+    STORE_OPERATION_TRADE_INFO_API,
+    STORE_OPERATION_TRADE_LIST_API,
+    STORE_OPERATION_NOT_PAY_ORDER_API,
+    STORE_OPERATION_LEAD_PAY_API,
+    STORE_OPERATION_GEOGRAPHY_API,
+    STORE_OPERATION_ANNUAL_SALES_API
+];
 
 // requestId 是浏览器给每个请求分配的 id。
 // 请求体和请求头会分两次进来，所以先临时存在这里再合并。
@@ -59,7 +74,21 @@ export default defineBackground(() => {
         ['requestHeaders', 'extraHeaders']
     );
 
-    // 经营数据页接口：这里只需要请求头里的风控参数。
+    // 经营数据页接口：年度经营情况会把 crawlerInfo 放在请求体里，这里单独保存下来。
+    browser.webRequest.onBeforeRequest.addListener(
+        details => {
+            if (!isStoreOperationApiUrl(details.url)) return undefined;
+
+            saveStoreOperationPartToken(readStoreOperationApiUrl(details.url), {
+                crawlerInfo: readCrawlerInfoFromBody(readRequestBody(details))
+            });
+            return undefined;
+        },
+        { urls: PDD_MMS_URLS },
+        ['requestBody']
+    );
+
+    // 经营数据页接口：这里保存请求头里的 anti-content 和 webspiderrule。
     browser.webRequest.onBeforeSendHeaders.addListener(
         details => {
             if (!isStoreOperationApiUrl(details.url)) return undefined;
@@ -89,7 +118,7 @@ async function savePartToken(requestId: string, input: { antiContent?: string; w
     });
 }
 
-async function saveStoreOperationPartToken(apiUrl: string, input: { antiContent?: string; webSpiderRule?: string }) {
+async function saveStoreOperationPartToken(apiUrl: string, input: { antiContent?: string; webSpiderRule?: string; crawlerInfo?: string }) {
     const newToken = createStoreOperationToken(input);
     const data = await browser.storage.local.get(STORE_OPERATION_TOKEN_STORAGE_KEY);
     const oldCache = data[STORE_OPERATION_TOKEN_STORAGE_KEY];
@@ -115,13 +144,23 @@ function readHeader(headers: RequestHeader[] | undefined, name: string): string 
 
 function isStoreOperationApiUrl(url: string): boolean {
     const cleanUrl = url.split('?')[0];
-    return cleanUrl === STORE_OPERATION_TRADE_INFO_API || cleanUrl === STORE_OPERATION_TRADE_LIST_API;
+    return STORE_OPERATION_API_URLS.includes(cleanUrl);
 }
 
 function readStoreOperationApiUrl(url: string): string {
     const cleanUrl = url.split('?')[0];
-    if (cleanUrl === STORE_OPERATION_TRADE_INFO_API) return STORE_OPERATION_TRADE_INFO_API;
-    return STORE_OPERATION_TRADE_LIST_API;
+    return STORE_OPERATION_API_URLS.find(apiUrl => apiUrl === cleanUrl) || cleanUrl;
+}
+
+function readCrawlerInfoFromBody(requestBody: string): string {
+    if (!requestBody) return '';
+
+    try {
+        const data = JSON.parse(requestBody) as { crawlerInfo?: unknown };
+        return typeof data.crawlerInfo === 'string' ? data.crawlerInfo : '';
+    } catch {
+        return '';
+    }
 }
 
 // 从请求体里还原 JSON 字符串。

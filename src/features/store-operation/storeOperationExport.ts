@@ -60,11 +60,19 @@ export function isStoreOperationPage(url: string): boolean {
 export function normalizeStoreOperationResult(raw: StoreOperationRawResult, digitMap: PddDigitMap): StoreOperationResult {
     const tradeInfo = decodeObject(raw.tradeInfo, digitMap);
     const tradeTrend = decodeObject(raw.tradeTrend, digitMap);
+    const orderInfo = decodeObject(raw.orderInfo, digitMap);
+    const leadPayInfo = decodeObject(raw.leadPayInfo, digitMap);
+    const geographyDistribution = decodeObject(raw.geographyDistribution, digitMap);
+    const annualSales = decodeObject(raw.annualSales, digitMap);
 
     return {
         tradeInfo,
         tradeInfoDisplay: buildTradeInfoDisplay(tradeInfo),
-        tradeTrend
+        tradeTrend,
+        orderInfo,
+        leadPayInfo,
+        geographyDistribution,
+        annualSales
     };
 }
 
@@ -114,6 +122,22 @@ export function buildStoreOperationWorkbookData(result: StoreOperationResult): S
                 ...readList(result.tradeTrend.todayPerHourRtList).map(row => ({ dataType: '今日分小时', ...row })),
                 ...readList(result.tradeTrend.yesterdayPerHourRtList).map(row => ({ dataType: '昨日分小时', ...row }))
             ])
+        },
+        {
+            name: '年度经营情况',
+            rows: buildAnnualSalesRows(result.annualSales)
+        },
+        {
+            name: '订单数据',
+            rows: buildOrderInfoRows(result.orderInfo)
+        },
+        {
+            name: '催付数据',
+            rows: buildLeadPayRows(result.leadPayInfo)
+        },
+        {
+            name: '地区交易数据',
+            rows: buildGeographyRows(result.geographyDistribution)
         }
     ];
 }
@@ -168,6 +192,85 @@ function buildTrendRows(rows: AnyObject[]): SpreadsheetCell[][] {
     const bodyRows = rows.map(row => headers.map(header => toSpreadsheetCell(row[header])));
 
     return [displayHeaders, ...bodyRows];
+}
+
+function buildAnnualSalesRows(annualSales: AnyObject): SpreadsheetCell[][] {
+    const historyRows = readList(annualSales.historyDataVOList);
+    const currentRows = readList(annualSales.currentDataVOList);
+    const targetRows = readList(annualSales.manageConfigureVOList);
+
+    const rows: SpreadsheetCell[][] = [['月份', '25年成交额(元)', '26年成交额(元)', '26年目标成交额(元)', '每月完成度']];
+
+    for (let month = 1; month <= 12; month += 1) {
+        const historyAmount = readMonthValue(historyRows, month, 'payOrdrAmt');
+        const currentAmount = readMonthValue(currentRows, month, 'payOrdrAmt');
+        const targetAmount = readAnnualTarget(targetRows, month);
+
+        rows.push([`${month}月`, historyAmount, currentAmount, targetAmount, buildMonthProgress(currentAmount, targetAmount)]);
+    }
+
+    return rows;
+}
+
+function buildOrderInfoRows(orderInfo: AnyObject): SpreadsheetCell[][] {
+    return [
+        ['统计时间', '下单待付款订单数', '下单待付款金额', '待到账金额'],
+        [
+            toSpreadsheetCell(orderInfo.readyDate),
+            toSpreadsheetCell(orderInfo.notPayOrderCnt),
+            // 订单接口里的金额单位是“分”，导出给用户看时统一换算成“元”。
+            centsToYuan(orderInfo.notPayOrderAmountCnt),
+            centsToYuan(orderInfo.settlementShippingAmount)
+        ]
+    ];
+}
+
+function buildLeadPayRows(leadPayInfo: AnyObject): SpreadsheetCell[][] {
+    return [
+        ['统计日期', '引导下单人数', '引导成交金额'],
+        [
+            toSpreadsheetCell(leadPayInfo.readyDate),
+            toSpreadsheetCell(leadPayInfo.allLeadPayPplCnt1m),
+            // 催付接口里的金额单位也是“分”，这里换算成截图里展示的“元”。
+            centsToYuan(leadPayInfo.allLeadPayOrdrAmt1m)
+        ]
+    ];
+}
+
+function buildGeographyRows(geographyDistribution: AnyObject): SpreadsheetCell[][] {
+    const rows = readList(geographyDistribution.geographyDistributionVOList).map(row => [
+        toSpreadsheetCell(row.provinceName),
+        toSpreadsheetCell(row.statDate),
+        toSpreadsheetCell(row.cfmOrdrAmt),
+        toSpreadsheetCell(row.cfmOrdrCnt),
+        toSpreadsheetCell(row.cfmOrdrUsrCnt),
+        toSpreadsheetCell(row.cfmOrdrAop),
+        toSpreadsheetCell(row.cfmOrdrAup)
+    ]);
+
+    return [['省份', '统计日期', '成交金额(元)', '成交订单数', '成交买家数', '成交订单单价(元)', '成交客单价(元)'], ...rows];
+}
+
+function readMonthValue(rows: AnyObject[], month: number, key: string): SpreadsheetCell {
+    const row = rows.find(item => Number(item.month) === month);
+    return toSpreadsheetCell(row?.[key]);
+}
+
+function readAnnualTarget(rows: AnyObject[], month: number): SpreadsheetCell {
+    const row = rows.find(item => Number(item.month) === month);
+    const target = row?.targetPayOrdrAmt ?? row?.targetOrdrAmt ?? row?.payOrdrAmt ?? row?.target;
+    const cell = toSpreadsheetCell(target);
+
+    // 页面没有配置月目标时显示 0，完成度也会显示为 --%。
+    return cell ?? 0;
+}
+
+function buildMonthProgress(currentAmount: SpreadsheetCell, targetAmount: SpreadsheetCell): SpreadsheetCell {
+    const current = Number(currentAmount);
+    const target = Number(targetAmount);
+
+    if (!Number.isFinite(current) || !Number.isFinite(target) || target <= 0) return '--%';
+    return `${((current / target) * 100).toFixed(2)}%`;
 }
 
 function rowsToCsv(rows: SpreadsheetCell[][]): string {
@@ -243,6 +346,12 @@ function toSpreadsheetCell(value: unknown): SpreadsheetCell {
     if (value === undefined || value === null || value === '') return null;
     if (typeof value === 'string' || typeof value === 'number' || typeof value === 'boolean') return value;
     return JSON.stringify(value);
+}
+
+function centsToYuan(value: unknown): SpreadsheetCell {
+    const numberValue = typeof value === 'number' ? value : Number(value);
+    if (!Number.isFinite(numberValue)) return null;
+    return Math.round(numberValue) / 100;
 }
 
 function valueToText(value: unknown): string {

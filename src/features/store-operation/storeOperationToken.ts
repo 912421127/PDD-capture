@@ -7,10 +7,11 @@ export function createStoreOperationTokenCache(): StoreOperationTokenCache {
     return {};
 }
 
-export function createStoreOperationToken(input: { antiContent?: string; webSpiderRule?: string }): StoreOperationToken {
+export function createStoreOperationToken(input: { antiContent?: string; webSpiderRule?: string; crawlerInfo?: string }): StoreOperationToken {
     return {
         antiContent: input.antiContent || '',
         webSpiderRule: input.webSpiderRule || '',
+        crawlerInfo: input.crawlerInfo || '',
         capturedAt: Date.now()
     };
 }
@@ -22,6 +23,7 @@ export function mergeStoreOperationToken(
     return {
         antiContent: newToken.antiContent || oldToken?.antiContent || '',
         webSpiderRule: newToken.webSpiderRule || oldToken?.webSpiderRule || '',
+        crawlerInfo: newToken.crawlerInfo || oldToken?.crawlerInfo || '',
         capturedAt: Math.max(oldToken?.capturedAt || 0, newToken.capturedAt)
     };
 }

@@ -3,6 +3,10 @@ import type { StoreOperationApiParams, StoreOperationRawResult } from './storeOp
 
 export const STORE_OPERATION_TRADE_INFO_API = 'https://mms.pinduoduo.com/sydney/api/mallTrade/getMallTradeInfo';
 export const STORE_OPERATION_TRADE_LIST_API = 'https://mms.pinduoduo.com/sydney/api/mallTrade/queryMallTradeList';
+export const STORE_OPERATION_NOT_PAY_ORDER_API = 'https://mms.pinduoduo.com/sydney/api/mallTrade/getMallNotPayOrderInfoV2';
+export const STORE_OPERATION_LEAD_PAY_API = 'https://mms.pinduoduo.com/sydney/api/mallTrade/getLeadPayOrderInfo';
+export const STORE_OPERATION_GEOGRAPHY_API = 'https://mms.pinduoduo.com/sydney/api/mallCoreData/queryMallGeographyDistributionList';
+export const STORE_OPERATION_ANNUAL_SALES_API = 'https://mms.pinduoduo.com/sydney/api/mallScore/queryMallConfigurationList';
 
 export async function fetchStoreOperationTradeOverview(params: StoreOperationApiParams): Promise<StoreOperationRawResult> {
     const [tab] = await browser.tabs.query({ active: true, currentWindow: true });
@@ -15,7 +19,15 @@ export async function fetchStoreOperationTradeOverview(params: StoreOperationApi
         target: { tabId: tab.id },
         world: 'MAIN',
         func: fetchStoreOperationInsidePddPage,
-        args: [STORE_OPERATION_TRADE_INFO_API, STORE_OPERATION_TRADE_LIST_API, params]
+        args: [
+            STORE_OPERATION_TRADE_INFO_API,
+            STORE_OPERATION_TRADE_LIST_API,
+            STORE_OPERATION_NOT_PAY_ORDER_API,
+            STORE_OPERATION_LEAD_PAY_API,
+            STORE_OPERATION_GEOGRAPHY_API,
+            STORE_OPERATION_ANNUAL_SALES_API,
+            params
+        ]
     });
 
     if (!result?.result) {
@@ -29,6 +41,10 @@ export async function fetchStoreOperationTradeOverview(params: StoreOperationApi
 async function fetchStoreOperationInsidePddPage(
     tradeInfoApi: string,
     tradeListApi: string,
+    notPayOrderApi: string,
+    leadPayApi: string,
+    geographyApi: string,
+    annualSalesApi: string,
     params: StoreOperationApiParams
 ): Promise<StoreOperationRawResult> {
     async function postJson(apiUrl: string, headers: Record<string, string>, body: unknown): Promise<unknown> {
@@ -78,14 +94,30 @@ async function fetchStoreOperationInsidePddPage(
 
     const tradeInfoHeaders = buildHeaders(params.tradeInfoToken);
     const tradeListHeaders = buildHeaders(params.tradeListToken);
+    const notPayOrderHeaders = buildHeaders(params.notPayOrderToken);
+    const leadPayHeaders = buildHeaders(params.leadPayToken);
+    const geographyHeaders = buildHeaders(params.geographyToken);
+    const annualSalesHeaders = buildHeaders(params.annualSalesToken);
 
-    const [tradeInfo, tradeTrend] = await Promise.all([
+    const [tradeInfo, tradeTrend, orderInfo, leadPayInfo, geographyDistribution, annualSales] = await Promise.all([
         postJson(tradeInfoApi, tradeInfoHeaders, body),
-        postJson(tradeListApi, tradeListHeaders, body)
+        postJson(tradeListApi, tradeListHeaders, body),
+        postJson(notPayOrderApi, notPayOrderHeaders, {}),
+        postJson(leadPayApi, leadPayHeaders, {}),
+        // 地区交易数据的 queryType=0 对应页面上的“昨日”，年度数据后续再单独扩展。
+        postJson(geographyApi, geographyHeaders, { queryType: 0 }),
+        // 年度经营情况接口的 body 里必须带 crawlerInfo，页面请求里它通常和 anti-content 一样。
+        postJson(annualSalesApi, annualSalesHeaders, {
+            crawlerInfo: params.annualSalesToken.crawlerInfo || params.annualSalesToken.antiContent
+        })
     ]);
 
     return {
         tradeInfo: readResultObject(tradeInfo),
-        tradeTrend: readResultObject(tradeTrend)
+        tradeTrend: readResultObject(tradeTrend),
+        orderInfo: readResultObject(orderInfo),
+        leadPayInfo: readResultObject(leadPayInfo),
+        geographyDistribution: readResultObject(geographyDistribution),
+        annualSales: readResultObject(annualSales)
     };
 }

@@ -5,6 +5,10 @@ import { readCurrentTabUrl } from '../../shared/page';
 import { readPddDigitMapFromPage } from '../goods-effect/goodsEffectDigitMap';
 import {
     fetchStoreOperationTradeOverview,
+    STORE_OPERATION_ANNUAL_SALES_API,
+    STORE_OPERATION_GEOGRAPHY_API,
+    STORE_OPERATION_LEAD_PAY_API,
+    STORE_OPERATION_NOT_PAY_ORDER_API,
     STORE_OPERATION_TRADE_INFO_API,
     STORE_OPERATION_TRADE_LIST_API
 } from './storeOperationApi';
@@ -134,7 +138,11 @@ export function useStoreOperationCapture() {
             queryType: 6,
             queryDate: queryDate.value,
             tradeInfoToken: readStoreOperationTokenFromCache(tokenCache.value || {}, STORE_OPERATION_TRADE_INFO_API),
-            tradeListToken: readStoreOperationTokenFromCache(tokenCache.value || {}, STORE_OPERATION_TRADE_LIST_API)
+            tradeListToken: readStoreOperationTokenFromCache(tokenCache.value || {}, STORE_OPERATION_TRADE_LIST_API),
+            notPayOrderToken: readStoreOperationTokenFromCache(tokenCache.value || {}, STORE_OPERATION_NOT_PAY_ORDER_API),
+            leadPayToken: readStoreOperationTokenFromCache(tokenCache.value || {}, STORE_OPERATION_LEAD_PAY_API),
+            geographyToken: readStoreOperationTokenFromCache(tokenCache.value || {}, STORE_OPERATION_GEOGRAPHY_API),
+            annualSalesToken: readStoreOperationTokenFromCache(tokenCache.value || {}, STORE_OPERATION_ANNUAL_SALES_API)
         };
     }
 

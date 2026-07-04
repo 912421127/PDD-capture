@@ -3,6 +3,7 @@ import type { CaptureTaskStatus } from '../goods-effect/goodsEffectTypes';
 export type StoreOperationToken = {
     antiContent: string;
     webSpiderRule: string;
+    crawlerInfo?: string;
     capturedAt: number;
 };
 
@@ -13,11 +14,19 @@ export type StoreOperationApiParams = {
     queryDate: string;
     tradeInfoToken: StoreOperationToken;
     tradeListToken: StoreOperationToken;
+    notPayOrderToken: StoreOperationToken;
+    leadPayToken: StoreOperationToken;
+    geographyToken: StoreOperationToken;
+    annualSalesToken: StoreOperationToken;
 };
 
 export type StoreOperationRawResult = {
     tradeInfo: Record<string, unknown>;
     tradeTrend: Record<string, unknown>;
+    orderInfo: Record<string, unknown>;
+    leadPayInfo: Record<string, unknown>;
+    geographyDistribution: Record<string, unknown>;
+    annualSales: Record<string, unknown>;
 };
 
 export type StoreOperationResult = StoreOperationRawResult & {
