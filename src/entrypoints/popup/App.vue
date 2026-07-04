@@ -1,21 +1,21 @@
 <template>
     <main class="popup-page">
-        <a-typography>
-            <a-typography-title :level="4">PDD 店铺数据采集</a-typography-title>
-            <a-typography-paragraph class="status-text">选择功能后执行采集导出</a-typography-paragraph>
-        </a-typography>
+        <header class="popup-header">
+            <h1 class="popup-title">PDD 店铺数据采集</h1>
+            <p class="status-text">选择功能后执行采集导出</p>
+        </header>
 
         <section class="feature-picker">
-            <label class="field-label">功能</label>
-            <a-select
-                v-model:value="activeFeature"
-                class="full-input"
-                :options="POPUP_FEATURE_OPTIONS"
-                placeholder="请选择要使用的采集功能"
-            />
-            <a-typography-paragraph v-if="activeFeatureDescription" class="status-text feature-description">
+            <label class="field-label" for="popup-feature-select">功能</label>
+            <select id="popup-feature-select" v-model="activeFeature" class="native-select">
+                <option value="">请选择要使用的采集功能</option>
+                <option v-for="option in POPUP_FEATURE_OPTIONS" :key="option.value" :value="option.value">
+                    {{ option.label }}
+                </option>
+            </select>
+            <p v-if="activeFeatureDescription" class="status-text feature-description">
                 {{ activeFeatureDescription }}
-            </a-typography-paragraph>
+            </p>
         </section>
 
         <GoodsEffectPanel v-if="activeFeature === 'goods-effect'" />
@@ -24,10 +24,12 @@
 </template>
 
 <script setup lang="ts">
-import { computed, ref } from 'vue';
-import GoodsEffectPanel from '../../features/goods-effect/GoodsEffectPanel.vue';
-import StoreOperationPanel from '../../features/store-operation/StoreOperationPanel.vue';
+import { computed, defineAsyncComponent, ref } from 'vue';
 import { getDefaultPopupFeature, POPUP_FEATURE_OPTIONS, type PopupFeatureKey } from './popupFeatures';
+
+// popup 首屏只加载选择器，具体采集面板等用户选中后再加载，减少打开时的等待。
+const GoodsEffectPanel = defineAsyncComponent(() => import('../../features/goods-effect/GoodsEffectPanel.vue'));
+const StoreOperationPanel = defineAsyncComponent(() => import('../../features/store-operation/StoreOperationPanel.vue'));
 
 const activeFeature = ref<PopupFeatureKey>(getDefaultPopupFeature());
 

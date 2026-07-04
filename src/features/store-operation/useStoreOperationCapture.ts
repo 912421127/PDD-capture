@@ -62,7 +62,7 @@ export function useStoreOperationCapture() {
 
         if (task.status === 'success' && task.result) {
             exportJson();
-            exportExcel();
+            await exportExcel();
         }
     }
 
@@ -103,12 +103,17 @@ export function useStoreOperationCapture() {
         exportData('json');
     }
 
-    function exportExcel() {
+    async function exportExcel() {
         if (!task.result) return;
-        exportData('xlsx');
+
+        try {
+            await exportData('xlsx');
+        } catch (error) {
+            failTask(error);
+        }
     }
 
-    function exportData(format: ExportFormat) {
+    async function exportData(format: ExportFormat) {
         if (!task.result) return;
 
         if (format === 'json') {
@@ -121,7 +126,7 @@ export function useStoreOperationCapture() {
             const filename = buildExportFilename('交易概况', 'xlsx');
             downloadBinaryFile(
                 filename,
-                buildStoreOperationXlsx(task.result),
+                await buildStoreOperationXlsx(task.result),
                 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'
             );
             return;

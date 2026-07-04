@@ -1,4 +1,4 @@
-import * as XLSX from 'xlsx';
+import type { ColInfo } from 'xlsx';
 import { decodePddDigitText, type PddDigitMap } from '../goods-effect/goodsEffectExport.ts';
 import type { StoreOperationRawResult, StoreOperationResult } from './storeOperationTypes';
 
@@ -142,7 +142,9 @@ export function buildStoreOperationWorkbookData(result: StoreOperationResult): S
     ];
 }
 
-export function buildStoreOperationXlsx(result: StoreOperationResult): ArrayBuffer {
+export async function buildStoreOperationXlsx(result: StoreOperationResult): Promise<ArrayBuffer> {
+    // xlsx 体积较大，只有用户真的导出 Excel 时才加载，避免拖慢 popup 打开速度。
+    const XLSX = await import('xlsx');
     const workbook = XLSX.utils.book_new();
 
     for (const sheet of buildStoreOperationWorkbookData(result)) {
@@ -293,7 +295,7 @@ function collectHeaders(rows: AnyObject[], firstHeaders: string[]): string[] {
     return Array.from(headers);
 }
 
-function buildColumnWidths(rows: SpreadsheetCell[][]): XLSX.ColInfo[] {
+function buildColumnWidths(rows: SpreadsheetCell[][]): ColInfo[] {
     const columnCount = Math.max(0, ...rows.map(row => row.length));
 
     return Array.from({ length: columnCount }, (_, columnIndex) => {
