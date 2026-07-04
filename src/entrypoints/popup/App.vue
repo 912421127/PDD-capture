@@ -19,12 +19,14 @@
         </section>
 
         <GoodsEffectPanel v-if="activeFeature === 'goods-effect'" />
+        <StoreOperationPanel v-if="activeFeature === 'store-operation'" />
     </main>
 </template>
 
 <script setup lang="ts">
 import { computed, ref } from 'vue';
 import GoodsEffectPanel from '../../features/goods-effect/GoodsEffectPanel.vue';
+import StoreOperationPanel from '../../features/store-operation/StoreOperationPanel.vue';
 import { getDefaultPopupFeature, POPUP_FEATURE_OPTIONS, type PopupFeatureKey } from './popupFeatures';
 
 const activeFeature = ref<PopupFeatureKey>(getDefaultPopupFeature());

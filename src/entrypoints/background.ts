@@ -2,6 +2,14 @@ import { defineBackground } from 'wxt/utils/define-background';
 import { browser } from 'wxt/browser';
 import { createGoodsEffectToken, mergeGoodsEffectToken, TOKEN_STORAGE_KEY } from '../features/goods-effect/goodsEffectToken';
 import type { GoodsEffectToken } from '../features/goods-effect/goodsEffectTypes';
+import { STORE_OPERATION_TRADE_INFO_API, STORE_OPERATION_TRADE_LIST_API } from '../features/store-operation/storeOperationApi';
+import {
+    createStoreOperationToken,
+    createStoreOperationTokenCache,
+    saveStoreOperationTokenToCache,
+    STORE_OPERATION_TOKEN_STORAGE_KEY
+} from '../features/store-operation/storeOperationToken';
+import type { StoreOperationTokenCache } from '../features/store-operation/storeOperationTypes';
 
 type RequestHeader = {
     name: string;
@@ -18,10 +26,12 @@ type RequestBodyDetails = {
 
 // 商品效果接口。background 会监听这个接口，从真实请求里拿动态参数。
 const GOODS_EFFECT_API = 'https://mms.pinduoduo.com/sydney/api/goodsDataShow/queryGoodsDetailVOListForMMS';
+const PDD_MMS_URLS = ['https://mms.pinduoduo.com/*'];
 
 // requestId 是浏览器给每个请求分配的 id。
 // 请求体和请求头会分两次进来，所以先临时存在这里再合并。
 const tokenMap = new Map<string, GoodsEffectToken>();
+let storeOperationTokenCache: StoreOperationTokenCache = createStoreOperationTokenCache();
 
 export default defineBackground(() => {
     // 监听请求体：这里主要拿 crawlerInfo。
@@ -48,6 +58,21 @@ export default defineBackground(() => {
         { urls: [GOODS_EFFECT_API] },
         ['requestHeaders', 'extraHeaders']
     );
+
+    // 经营数据页接口：这里只需要请求头里的风控参数。
+    browser.webRequest.onBeforeSendHeaders.addListener(
+        details => {
+            if (!isStoreOperationApiUrl(details.url)) return undefined;
+
+            saveStoreOperationPartToken(readStoreOperationApiUrl(details.url), {
+                antiContent: readHeader(details.requestHeaders, 'anti-content'),
+                webSpiderRule: readHeader(details.requestHeaders, 'webspiderrule')
+            });
+            return undefined;
+        },
+        { urls: PDD_MMS_URLS },
+        ['requestHeaders', 'extraHeaders']
+    );
 });
 
 // 保存一部分参数。两次事件都会调用这里，最后合并成完整参数。
@@ -64,11 +89,39 @@ async function savePartToken(requestId: string, input: { antiContent?: string; w
     });
 }
 
+async function saveStoreOperationPartToken(apiUrl: string, input: { antiContent?: string; webSpiderRule?: string }) {
+    const newToken = createStoreOperationToken(input);
+    const data = await browser.storage.local.get(STORE_OPERATION_TOKEN_STORAGE_KEY);
+    const oldCache = data[STORE_OPERATION_TOKEN_STORAGE_KEY];
+
+    if (oldCache && typeof oldCache === 'object') {
+        storeOperationTokenCache = oldCache as StoreOperationTokenCache;
+    }
+
+    // 两个接口的 anti-content 不一样，必须按接口分别保存。
+    storeOperationTokenCache = saveStoreOperationTokenToCache(storeOperationTokenCache, apiUrl, newToken);
+
+    await browser.storage.local.set({
+        [STORE_OPERATION_TOKEN_STORAGE_KEY]: storeOperationTokenCache
+    });
+}
+
 // 从请求头数组里读取指定字段，不区分大小写。
 function readHeader(headers: RequestHeader[] | undefined, name: string): string {
     const targetName = name.toLowerCase();
     const header = headers?.find(item => item.name.toLowerCase() === targetName);
     return typeof header?.value === 'string' ? header.value : '';
+}
+
+function isStoreOperationApiUrl(url: string): boolean {
+    const cleanUrl = url.split('?')[0];
+    return cleanUrl === STORE_OPERATION_TRADE_INFO_API || cleanUrl === STORE_OPERATION_TRADE_LIST_API;
+}
+
+function readStoreOperationApiUrl(url: string): string {
+    const cleanUrl = url.split('?')[0];
+    if (cleanUrl === STORE_OPERATION_TRADE_INFO_API) return STORE_OPERATION_TRADE_INFO_API;
+    return STORE_OPERATION_TRADE_LIST_API;
 }
 
 // 从请求体里还原 JSON 字符串。

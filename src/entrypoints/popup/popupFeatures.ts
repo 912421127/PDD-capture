@@ -1,4 +1,4 @@
-export type PopupFeatureKey = '' | 'goods-effect';
+export type PopupFeatureKey = '' | 'goods-effect' | 'store-operation';
 
 export type PopupFeatureOption = {
     label: string;
@@ -12,6 +12,11 @@ export const POPUP_FEATURE_OPTIONS: PopupFeatureOption[] = [
         label: '商品数据页面采集',
         value: 'goods-effect',
         description: '打开 PDD 商品数据页面后，采集并导出商品数据'
+    },
+    {
+        label: '经营数据页面采集',
+        value: 'store-operation',
+        description: '打开 PDD 经营数据页面后，采集并导出交易概况'
     }
 ];
 

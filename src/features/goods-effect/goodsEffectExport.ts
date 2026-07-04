@@ -198,7 +198,7 @@ function getDisplayHeaderName(header: string): string {
 }
 
 // 解码 PDD 字体加密数字。没有加密字符时返回 undefined，避免多生成空字段。
-function decodePddDigitText(value: unknown, digitMap: PddDigitMap): string | undefined {
+export function decodePddDigitText(value: unknown, digitMap: PddDigitMap): string | undefined {
     if (typeof value !== 'string') return undefined;
 
     let hasEncryptedChar = false;
