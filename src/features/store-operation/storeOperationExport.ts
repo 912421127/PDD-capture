@@ -1,5 +1,5 @@
 import type { ColInfo } from 'xlsx';
-import { decodePddDigitText, type PddDigitMap } from '../goods-effect/goodsEffectExport.ts';
+import { decodePddDigitText, getExportHeaderName, type PddDigitMap } from '../goods-effect/goodsEffectExport.ts';
 import type { StoreOperationRawResult, StoreOperationResult } from './storeOperationTypes';
 
 type AnyObject = Record<string, unknown>;
@@ -190,7 +190,8 @@ function buildTradeInfoRows(tradeInfo: AnyObject): SpreadsheetCell[][] {
 
 function buildTrendRows(rows: AnyObject[]): SpreadsheetCell[][] {
     const headers = collectHeaders(rows, TREND_HEADER_ORDER);
-    const displayHeaders = headers.map(header => TREND_HEADER_NAME_MAP[header] || header);
+    // 趋势接口可能临时增加字段，导出时统一走中文表头，避免用户看到接口英文名。
+    const displayHeaders = headers.map(header => TREND_HEADER_NAME_MAP[header] || getExportHeaderName(header));
     const bodyRows = rows.map(row => headers.map(header => toSpreadsheetCell(row[header])));
 
     return [displayHeaders, ...bodyRows];

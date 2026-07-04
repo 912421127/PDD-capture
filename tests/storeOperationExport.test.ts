@@ -1,7 +1,7 @@
 import assert from 'node:assert/strict';
 import { test } from 'node:test';
 
-import { buildStoreOperationWorkbookData } from '../src/features/store-operation/storeOperationExport.ts';
+import { buildStoreOperationCsvFiles, buildStoreOperationWorkbookData } from '../src/features/store-operation/storeOperationExport.ts';
 import type { StoreOperationResult } from '../src/features/store-operation/storeOperationTypes.ts';
 
 test('builds workbook data with the three trade overview sheets', () => {
@@ -15,7 +15,7 @@ test('builds workbook data with the three trade overview sheets', () => {
         tradeInfoDisplay: {},
         tradeTrend: {
             todayRtList: [{ stateDate: '2026-07-04', payOrdrAmt: '100.50' }],
-            yesterdayRtList: [{ stateDate: '2026-07-03', payOrdrAmt: '80.00' }],
+            yesterdayRtList: [{ stateDate: '2026-07-03', payOrdrAmt: '80.00', payOrdrAmtPct: '25%' }],
             todayPerHourRtList: [{ stateDate: '2026-07-04', hr: 10, payOrdrCnt: '2' }],
             yesterdayPerHourRtList: [{ stateDate: '2026-07-03', hr: 10, payOrdrCnt: '1' }]
         },
@@ -67,7 +67,7 @@ test('builds workbook data with the three trade overview sheets', () => {
     assert.deepEqual(workbook[0].rows[0], ['指标', '当前值', '对比值', '是否百分比', '是否上涨']);
     assert.deepEqual(workbook[0].rows[1], ['成交金额', '100.50', '12%', false, true]);
 
-    assert.deepEqual(workbook[1].rows[0].slice(0, 4), ['数据类型', '统计日期', '成交金额']);
+    assert.deepEqual(workbook[1].rows[0].slice(0, 4), ['数据类型', '统计日期', '成交金额', '成交金额对比值']);
     assert.equal(workbook[1].rows[1][0], '今日累计');
     assert.equal(workbook[1].rows[2][0], '昨日累计');
 
@@ -88,4 +88,7 @@ test('builds workbook data with the three trade overview sheets', () => {
 
     assert.deepEqual(workbook[6].rows[0], ['省份', '统计日期', '成交金额(元)', '成交订单数', '成交买家数', '成交订单单价(元)', '成交客单价(元)']);
     assert.deepEqual(workbook[6].rows[1], ['河北', '2026-07-03', 1056, 4, 4, 264, 264]);
+
+    const trendCsv = buildStoreOperationCsvFiles(result)[1].data;
+    assert.match(trendCsv.split('\n')[0], /成交金额对比值/);
 });

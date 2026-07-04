@@ -3,10 +3,10 @@
         <AButton type="primary" block :loading="loading" @click="emit('primary')">
             {{ primaryText }}
         </AButton>
-        <ASpaceCompact block>
+        <!-- <ASpaceCompact block>
             <AButton block :disabled="disabled" @click="emit('export-json')">导出 JSON</AButton>
             <AButton block :disabled="disabled" @click="emit('export-file')">{{ secondaryText }}</AButton>
-        </ASpaceCompact>
+        </ASpaceCompact> -->
     </ASpace>
 </template>
 

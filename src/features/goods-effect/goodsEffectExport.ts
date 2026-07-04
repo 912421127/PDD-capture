@@ -93,6 +93,87 @@ const HEADER_NAME_MAP: Record<string, string> = {
     url: '商品链接'
 };
 
+const HEADER_SUFFIX_NAME_MAP: Array<[string, string]> = [
+    ['PctRised', '是否上涨'],
+    ['IsPercent', '是否百分比'],
+    ['Pct', '对比值'],
+    ['Ytd', '昨日']
+];
+
+const HEADER_WORD_NAME_MAP: Record<string, string> = {
+    ad: '推广',
+    activity: '活动',
+    amount: '金额',
+    amt: '金额',
+    annual: '年度',
+    aop: '订单单价',
+    aup: '客单价',
+    avg: '平均',
+    cate: '类目',
+    cfm: '确认',
+    cnt: '数',
+    cnslt: '咨询',
+    created: '创建',
+    crt: '创建',
+    cvr: '转化率',
+    data: '数据',
+    date: '日期',
+    desc: '说明',
+    detail: '详情',
+    fav: '收藏',
+    geography: '地区',
+    goods: '商品',
+    help: '助力',
+    hot: '热销',
+    id: 'ID',
+    impr: '曝光',
+    info: '信息',
+    is: '是否',
+    jump: '跳转',
+    label: '标签',
+    lead: '催付',
+    list: '列表',
+    mall: '店铺',
+    metric: '指标',
+    month: '月份',
+    name: '名称',
+    newstyle: '新款',
+    ordr: '订单',
+    order: '订单',
+    pay: '成交',
+    pct: '百分比',
+    peer: '同行',
+    perf: '优秀',
+    pgv: '均值',
+    province: '省份',
+    pt: '拼团',
+    pv: '浏览量',
+    qty: '件数',
+    rank: '排名',
+    rate: '率',
+    rf: '退款',
+    rised: '上涨',
+    rpay: '老买家',
+    rto: '率',
+    show: '展示',
+    stat: '统计',
+    status: '状态',
+    strategy: '策略',
+    suc: '成功',
+    target: '目标',
+    thumb: '主图',
+    time: '时间',
+    unknown: '未知',
+    url: '链接',
+    usr: '用户',
+    uv: '访客数',
+    val: '价值',
+    vcr: '成交转化率',
+    vo: '',
+    vstr: '访客',
+    ytd: '昨日'
+};
+
 // 当前页面字体里确认出来的数字映射。
 // 后续如果 PDD 更换字体，再升级成自动解析字体文件。
 const PDD_DIGIT_MAP: PddDigitMap = {
@@ -139,7 +220,7 @@ export function normalizeGoodsEffectRecord(raw: unknown, digitMap: PddDigitMap =
 // 把采集结果转成 CSV 文本，方便直接下载到本地。
 export function toCsv(records: GoodsEffectRecord[]): string {
     const headers = collectCsvHeaders(records);
-    const displayHeaders = headers.map(getDisplayHeaderName);
+    const displayHeaders = headers.map(getExportHeaderName);
 
     const rows = records.map(record => {
         return headers
@@ -192,9 +273,25 @@ function hasExportValue(value: unknown): boolean {
     return value !== undefined && value !== null && value !== '';
 }
 
-// 把接口字段名转成中文表头。
-function getDisplayHeaderName(header: string): string {
-    return HEADER_NAME_MAP[header] || header;
+// 把接口字段名转成中文表头。未收录的新字段会按常见接口缩写拆词，尽量避免导出英文表头。
+export function getExportHeaderName(header: string): string {
+    const directName = HEADER_NAME_MAP[header];
+    if (directName) return directName;
+
+    for (const [suffix, suffixName] of HEADER_SUFFIX_NAME_MAP) {
+        if (!header.endsWith(suffix)) continue;
+
+        const baseHeader = header.slice(0, -suffix.length);
+        const baseName = getExportHeaderName(baseHeader);
+        if (baseName !== baseHeader) return `${baseName}${suffixName}`;
+    }
+
+    return header
+        .replace(/([a-z0-9])([A-Z])/g, '$1 $2')
+        .split(/[\s_-]+/)
+        .filter(Boolean)
+        .map(word => HEADER_WORD_NAME_MAP[word.toLowerCase()] ?? word)
+        .join('');
 }
 
 // 解码 PDD 字体加密数字。没有加密字符时返回 undefined，避免多生成空字段。
