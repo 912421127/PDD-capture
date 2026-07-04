@@ -13,19 +13,51 @@ import {
     STORE_OPERATION_TRADE_LIST_API
 } from './storeOperationApi';
 import {
+    buildStoreOperationGeographyDateParams,
+    buildStoreOperationTradeDateParams,
+    isAfterTodayForStoreOperation,
+    storeOperationGeographyTimeOptions,
+    storeOperationTradeTimeOptions
+} from './storeOperationTimeRange';
+import type {
+    StoreOperationDateRange,
+    StoreOperationGeographyTimePreset,
+    StoreOperationPickerDate,
+    StoreOperationTradeTimePreset
+} from './storeOperationTimeRange';
+import {
     buildStoreOperationCsvFiles,
     buildStoreOperationXlsx,
     isStoreOperationPage,
     normalizeStoreOperationResult,
     toStoreOperationJson
 } from './storeOperationExport';
-import { readStoreOperationTokenCacheFromPage, readStoreOperationTokenFromCache } from './storeOperationToken';
+import {
+    assertStoreOperationTokenCacheReady,
+    readOptionalStoreOperationTokenFromCache,
+    readStoreOperationTokenCacheFromPage,
+    readStoreOperationTokenFromCache
+} from './storeOperationToken';
 import type { StoreOperationApiParams, StoreOperationCaptureTask, StoreOperationTokenCache } from './storeOperationTypes';
 
-export function useStoreOperationCapture() {
-    const today = new Date().toISOString().slice(0, 10);
+const STORE_OPERATION_TOKEN_REQUIREMENTS = [
+    { apiUrl: STORE_OPERATION_TRADE_INFO_API, label: '交易概况' },
+    { apiUrl: STORE_OPERATION_TRADE_LIST_API, label: '交易趋势' }
+];
 
-    const queryDate = ref(today);
+export function useStoreOperationCapture() {
+    const today = buildStoreOperationTradeDateParams('realtime').queryDate;
+
+    const tradeTimePreset = ref<StoreOperationTradeTimePreset>('realtime');
+    const geographyTimePreset = ref<StoreOperationGeographyTimePreset>('yesterday');
+    const customDate = ref(today);
+    const weekPickerDate = ref();
+    const monthPickerDate = ref();
+    const selectedWeekDate = ref<StoreOperationDateRange>(readRangeFromQueryDate(buildStoreOperationTradeDateParams('week').queryDate));
+    const selectedMonth = ref<StoreOperationDateRange>(readRangeFromQueryDate(buildStoreOperationTradeDateParams('month').queryDate));
+    const isCustomTime = computed(() => tradeTimePreset.value === 'custom');
+    const isWeekTime = computed(() => tradeTimePreset.value === 'week');
+    const isMonthTime = computed(() => tradeTimePreset.value === 'month');
     const tokenCache = ref<StoreOperationTokenCache>();
 
     const task = reactive<StoreOperationCaptureTask>({
@@ -81,9 +113,8 @@ export function useStoreOperationCapture() {
                 throw new Error('当前标签页不是 PDD 经营数据页，请打开经营数据页后重试');
             }
 
-            if (!tokenCache.value) {
-                tokenCache.value = await readStoreOperationTokenCacheFromPage();
-            }
+            // 每次采集都重新读取最新缓存，避免 popup 复用上一次失败时留下的残缺参数。
+            tokenCache.value = await readStoreOperationTokenCacheFromPage();
 
             // 复用商品数据页的动态字体读取，统一处理 PDD 加密数字。
             const digitMap = await readPddDigitMapFromPage();
@@ -139,16 +170,46 @@ export function useStoreOperationCapture() {
     }
 
     function buildParams(): StoreOperationApiParams {
+        // 交易概况和地区交易数据在 PDD 页面上是两个独立筛选器，接口参数也分开构造。
+        const tradeQuery = buildStoreOperationTradeDateParams(tradeTimePreset.value, new Date(), {
+            customDate: customDate.value,
+            selectedWeekDate: selectedWeekDate.value,
+            selectedMonth: selectedMonth.value
+        });
+        const geographyQuery = buildStoreOperationGeographyDateParams(geographyTimePreset.value);
+        const cache = tokenCache.value || {};
+
+        assertStoreOperationTokenCacheReady(cache, STORE_OPERATION_TOKEN_REQUIREMENTS);
+
         return {
-            queryType: 6,
-            queryDate: queryDate.value,
-            tradeInfoToken: readStoreOperationTokenFromCache(tokenCache.value || {}, STORE_OPERATION_TRADE_INFO_API),
-            tradeListToken: readStoreOperationTokenFromCache(tokenCache.value || {}, STORE_OPERATION_TRADE_LIST_API),
-            notPayOrderToken: readStoreOperationTokenFromCache(tokenCache.value || {}, STORE_OPERATION_NOT_PAY_ORDER_API),
-            leadPayToken: readStoreOperationTokenFromCache(tokenCache.value || {}, STORE_OPERATION_LEAD_PAY_API),
-            geographyToken: readStoreOperationTokenFromCache(tokenCache.value || {}, STORE_OPERATION_GEOGRAPHY_API),
-            annualSalesToken: readStoreOperationTokenFromCache(tokenCache.value || {}, STORE_OPERATION_ANNUAL_SALES_API)
+            tradeQuery,
+            geographyQuery,
+            tradeInfoToken: readStoreOperationTokenFromCache(cache, STORE_OPERATION_TRADE_INFO_API),
+            tradeListToken: readStoreOperationTokenFromCache(cache, STORE_OPERATION_TRADE_LIST_API),
+            notPayOrderToken: readOptionalStoreOperationTokenFromCache(cache, STORE_OPERATION_NOT_PAY_ORDER_API),
+            leadPayToken: readOptionalStoreOperationTokenFromCache(cache, STORE_OPERATION_LEAD_PAY_API),
+            geographyToken: readOptionalStoreOperationTokenFromCache(cache, STORE_OPERATION_GEOGRAPHY_API),
+            annualSalesToken: readOptionalStoreOperationTokenFromCache(cache, STORE_OPERATION_ANNUAL_SALES_API)
         };
+    }
+
+    function changeSelectedWeekDate(date: unknown, dateString: string | string[]) {
+        const value = readPickerDate(date, dateString, 'YYYY-MM-DD');
+        if (!value) return;
+
+        selectedWeekDate.value = readRangeFromQueryDate(buildStoreOperationTradeDateParams('week', new Date(), { selectedWeekDate: value }).queryDate);
+    }
+
+    function changeSelectedMonth(date: unknown, dateString: string | string[]) {
+        const value = readPickerDate(date, dateString, 'YYYY-MM');
+        if (!value) return;
+
+        selectedMonth.value = readRangeFromQueryDate(buildStoreOperationTradeDateParams('month', new Date(), { selectedMonth: value }).queryDate);
+    }
+
+    function disabledFutureDate(current: StoreOperationPickerDate) {
+        // 未来日期在 PDD 页面没有数据，插件这里直接禁用，减少接口失败。
+        return isAfterTodayForStoreOperation(current);
     }
 
     function failTask(error: unknown) {
@@ -168,7 +229,19 @@ export function useStoreOperationCapture() {
     }
 
     return {
-        queryDate,
+        tradeTimePreset,
+        geographyTimePreset,
+        isCustomTime,
+        isWeekTime,
+        isMonthTime,
+        storeOperationTradeTimeOptions,
+        storeOperationGeographyTimeOptions,
+        customDate,
+        weekPickerDate,
+        monthPickerDate,
+        changeSelectedWeekDate,
+        changeSelectedMonth,
+        disabledFutureDate,
         task,
         message,
         messageType,
@@ -180,4 +253,19 @@ export function useStoreOperationCapture() {
         exportJson,
         exportExcel
     };
+}
+
+function readRangeFromQueryDate(queryDate: string): StoreOperationDateRange {
+    const parts = queryDate.split(',');
+    return [parts[0] || '', parts[1] || parts[0] || ''];
+}
+
+function readPickerDate(date: unknown, dateString: string | string[], format: string): string {
+    if (hasFormatFunction(date)) return date.format(format);
+
+    return Array.isArray(dateString) ? dateString[0] || '' : dateString;
+}
+
+function hasFormatFunction(value: unknown): value is { format: (format: string) => string } {
+    return Boolean(value && typeof value === 'object' && 'format' in value && typeof value.format === 'function');
 }

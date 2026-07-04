@@ -76,39 +76,50 @@ async function fetchStoreOperationInsidePddPage(
         return {};
     }
 
-    function buildHeaders(token: { antiContent: string; webSpiderRule: string }): Record<string, string> {
+    function buildHeaders(token: { antiContent: string; webSpiderRule: string } | undefined): Record<string, string> {
         const headers: Record<string, string> = {
             'content-type': 'application/json'
         };
 
-        if (token.antiContent) headers['anti-content'] = token.antiContent;
-        if (token.webSpiderRule) headers.webspiderrule = token.webSpiderRule;
+        if (token?.antiContent) headers['anti-content'] = token.antiContent;
+        if (token?.webSpiderRule) headers.webspiderrule = token.webSpiderRule;
 
         return headers;
     }
 
-    const body = {
-        queryType: params.queryType,
-        queryDate: params.queryDate
+    async function postJsonWhenReady(
+        apiUrl: string,
+        token: { antiContent: string; webSpiderRule: string } | undefined,
+        body: unknown
+    ): Promise<unknown> {
+        // 经营页部分模块会懒加载；缺少这些模块参数时跳过该模块，避免卡死核心交易数据采集。
+        if (!token?.antiContent) return { success: true, result: {} };
+
+        return postJson(apiUrl, buildHeaders(token), body);
+    }
+
+    const tradeBody = {
+        queryType: params.tradeQuery.queryType,
+        queryDate: params.tradeQuery.queryDate
+    };
+
+    const geographyBody = {
+        queryType: params.geographyQuery.queryType,
+        queryDate: params.geographyQuery.queryDate
     };
 
     const tradeInfoHeaders = buildHeaders(params.tradeInfoToken);
     const tradeListHeaders = buildHeaders(params.tradeListToken);
-    const notPayOrderHeaders = buildHeaders(params.notPayOrderToken);
-    const leadPayHeaders = buildHeaders(params.leadPayToken);
-    const geographyHeaders = buildHeaders(params.geographyToken);
-    const annualSalesHeaders = buildHeaders(params.annualSalesToken);
-
     const [tradeInfo, tradeTrend, orderInfo, leadPayInfo, geographyDistribution, annualSales] = await Promise.all([
-        postJson(tradeInfoApi, tradeInfoHeaders, body),
-        postJson(tradeListApi, tradeListHeaders, body),
-        postJson(notPayOrderApi, notPayOrderHeaders, {}),
-        postJson(leadPayApi, leadPayHeaders, {}),
-        // 地区交易数据的 queryType=0 对应页面上的“昨日”，年度数据后续再单独扩展。
-        postJson(geographyApi, geographyHeaders, { queryType: 0 }),
+        postJson(tradeInfoApi, tradeInfoHeaders, tradeBody),
+        postJson(tradeListApi, tradeListHeaders, tradeBody),
+        postJsonWhenReady(notPayOrderApi, params.notPayOrderToken, {}),
+        postJsonWhenReady(leadPayApi, params.leadPayToken, {}),
+        // 地区交易数据有独立时间筛选，不能跟交易概况混用 queryType。
+        postJsonWhenReady(geographyApi, params.geographyToken, geographyBody),
         // 年度经营情况接口的 body 里必须带 crawlerInfo，页面请求里它通常和 anti-content 一样。
-        postJson(annualSalesApi, annualSalesHeaders, {
-            crawlerInfo: params.annualSalesToken.crawlerInfo || params.annualSalesToken.antiContent
+        postJsonWhenReady(annualSalesApi, params.annualSalesToken, {
+            crawlerInfo: params.annualSalesToken?.crawlerInfo || params.annualSalesToken?.antiContent || ''
         })
     ]);
 

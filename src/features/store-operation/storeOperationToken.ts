@@ -3,6 +3,11 @@ import type { StoreOperationToken, StoreOperationTokenCache } from './storeOpera
 
 export const STORE_OPERATION_TOKEN_STORAGE_KEY = 'PDD_STORE_OPERATION_TOKEN';
 
+export type StoreOperationTokenRequirement = {
+    apiUrl: string;
+    label: string;
+};
+
 export function createStoreOperationTokenCache(): StoreOperationTokenCache {
     return {};
 }
@@ -49,6 +54,28 @@ export function readStoreOperationTokenFromCache(cache: StoreOperationTokenCache
     }
 
     return token;
+}
+
+export function readOptionalStoreOperationTokenFromCache(cache: StoreOperationTokenCache, apiUrl: string): StoreOperationToken | undefined {
+    const token = cache[apiUrl];
+
+    return token?.antiContent ? token : undefined;
+}
+
+export function assertStoreOperationTokenCacheReady(
+    cache: StoreOperationTokenCache,
+    requirements: StoreOperationTokenRequirement[]
+) {
+    const missingLabels = requirements
+        .filter(item => !cache[item.apiUrl]?.antiContent)
+        .map(item => item.label);
+
+    if (missingLabels.length === 0) return;
+
+    // 这里说清楚缺的是哪些模块，用户不用反复猜到底哪个接口参数还没有被 background 抓到。
+    throw new Error(
+        `经营数据页参数获取不完整，缺少：${missingLabels.join('、')}。请在 PDD 经营数据页面刷新页面或切换一次时间筛选，等这些模块加载完成后，再回到插件点击采集。`
+    );
 }
 
 export async function readStoreOperationTokenCacheFromPage(): Promise<StoreOperationTokenCache> {

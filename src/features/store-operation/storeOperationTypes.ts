@@ -1,4 +1,5 @@
 import type { CaptureTaskStatus } from '../goods-effect/goodsEffectTypes';
+import type { StoreOperationDateParams } from './storeOperationTimeRange';
 
 export type StoreOperationToken = {
     antiContent: string;
@@ -10,14 +11,14 @@ export type StoreOperationToken = {
 export type StoreOperationTokenCache = Record<string, StoreOperationToken>;
 
 export type StoreOperationApiParams = {
-    queryType: number;
-    queryDate: string;
+    tradeQuery: StoreOperationDateParams;
+    geographyQuery: StoreOperationDateParams;
     tradeInfoToken: StoreOperationToken;
     tradeListToken: StoreOperationToken;
-    notPayOrderToken: StoreOperationToken;
-    leadPayToken: StoreOperationToken;
-    geographyToken: StoreOperationToken;
-    annualSalesToken: StoreOperationToken;
+    notPayOrderToken?: StoreOperationToken;
+    leadPayToken?: StoreOperationToken;
+    geographyToken?: StoreOperationToken;
+    annualSalesToken?: StoreOperationToken;
 };
 
 export type StoreOperationRawResult = {
