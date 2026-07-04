@@ -36,11 +36,11 @@ export async function readGoodsEffectTokenFromPage(): Promise<GoodsEffectToken> 
     const token = data[TOKEN_STORAGE_KEY] as GoodsEffectToken | undefined;
 
     if (!token) {
-        throw new Error('还没有捕获到参数：请确认已重新加载插件，然后刷新商品效果页或点击页面查询');
+        throw new Error('还没有获取到页面参数。请先在 PDD 商品数据页面点击查询/刷新列表，等页面数据加载完成后，再回到插件点击采集。');
     }
 
     if (!token.crawlerInfo || !token.antiContent || !token.webSpiderRule) {
-        throw new Error('参数捕获不完整：请刷新商品效果页或点击页面查询后再试');
+        throw new Error('页面参数获取不完整。请先在 PDD 商品数据页面点击查询/刷新列表，等页面数据加载完成后，再回到插件点击采集。');
     }
 
     return token;

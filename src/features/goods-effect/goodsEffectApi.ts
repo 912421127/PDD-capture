@@ -68,12 +68,12 @@ async function fetchGoodsEffectInsidePddPage(apiUrl: string, params: GoodsEffect
         });
 
         if (!response.ok) {
-            throw new Error(`接口请求失败：HTTP ${response.status}`);
+            throw new Error(`接口请求失败：HTTP ${response.status}。可能是页面参数已过期，请在 PDD 页面重新点击查询后再试。`);
         }
 
         const data = await response.json();
         if (!data?.success) {
-            throw new Error(`接口返回失败：${data?.errorMsg || data?.errorCode || '未知错误'}`);
+            throw new Error(`接口返回失败：${data?.errorMsg || data?.errorCode || '未知错误'}。可能是页面参数已过期，请在 PDD 页面重新点击查询后再试。`);
         }
 
         const records = Array.isArray(data?.result?.goodsDetailList) ? data.result.goodsDetailList : [];
